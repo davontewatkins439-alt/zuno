@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Compass,
   Crown,
+  Gamepad2,
   Hash,
   Inbox,
   Lock,
@@ -107,6 +108,14 @@ function HomeSidebar() {
           </button>
           <button type="button" className={cls(route.name === "discover" && "active")} onClick={() => navigate("/discover")}>
             <Compass size={17} /> <span>Discover</span>
+          </button>
+          <button
+            type="button"
+            className={cls("quests-nav", route.name === "quests" && "active")}
+            onClick={() => navigate("/quests")}
+          >
+            <Gamepad2 size={17} /> <span>Roblox Quests</span>
+            <em className="quests-pill">XP</em>
           </button>
           <button
             type="button"

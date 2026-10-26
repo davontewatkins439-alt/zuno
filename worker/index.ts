@@ -11,6 +11,7 @@ import { calls } from "./routes/calls";
 import { owner } from "./routes/owner";
 import { plus } from "./routes/plus";
 import { stream } from "./routes/stream";
+import { quests } from "./routes/quests";
 import { macDownload, windowsDownload } from "./download";
 
 type AppType = { Bindings: Env; Variables: { user: SessionUser } };
@@ -120,6 +121,7 @@ app.route("/api", files);
 app.route("/api", voice);
 app.route("/api", calls);
 app.route("/api", stream);
+app.route("/api", quests);
 app.route("/api/servers", servers);
 app.route("/api/owner", owner);
 app.route("/api/plus", plus);

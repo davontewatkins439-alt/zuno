@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { hashPassword } from "./auth";
 import { now } from "./lib";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
@@ -66,6 +66,31 @@ const SCHEMA: string[] = [
   "CREATE INDEX IF NOT EXISTS idx_event_log_scope ON event_log(scope, ref_id, id)",
   "CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, caller_id TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'audio', status TEXT NOT NULL DEFAULT 'ringing', created_at INTEGER NOT NULL, answered_at INTEGER, ended_at INTEGER)",
   "CREATE INDEX IF NOT EXISTS idx_calls_channel ON calls(channel_id, status)",
+  // ---- ZUNO QUESTS -------------------------------------------------------
+  `CREATE TABLE IF NOT EXISTS quests (
+    id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, instructions TEXT,
+    category TEXT NOT NULL DEFAULT 'daily', difficulty TEXT NOT NULL DEFAULT 'easy',
+    xp INTEGER NOT NULL DEFAULT 50, badge_slug TEXT, verification TEXT NOT NULL DEFAULT 'manual',
+    target TEXT, link TEXT, repeatable INTEGER NOT NULL DEFAULT 0, cooldown_hours INTEGER NOT NULL DEFAULT 24,
+    active INTEGER NOT NULL DEFAULT 1, starts_at INTEGER, ends_at INTEGER, sort INTEGER NOT NULL DEFAULT 0,
+    created_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS quest_claims (
+    id TEXT PRIMARY KEY, quest_id TEXT NOT NULL, user_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', period_key TEXT NOT NULL DEFAULT 'once',
+    evidence TEXT, submitted_at INTEGER NOT NULL, reviewed_by TEXT, review_note TEXT,
+    reviewed_at INTEGER, xp_awarded INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
+  )`,
+  "CREATE INDEX IF NOT EXISTS idx_quest_claims_user ON quest_claims(user_id, quest_id)",
+  "CREATE INDEX IF NOT EXISTS idx_quest_claims_status ON quest_claims(status, submitted_at)",
+  // One open/verified claim per period is the database-level guard against
+  // duplicate rewards; rejected claims may be retried.
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_quest_claims_period ON quest_claims(quest_id, user_id, period_key) WHERE status <> 'rejected'",
+  "CREATE TABLE IF NOT EXISTS quest_xp (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, quest_id TEXT, amount INTEGER NOT NULL, source TEXT NOT NULL, created_at INTEGER NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS idx_quest_xp_user ON quest_xp(user_id, created_at)",
+  "CREATE TABLE IF NOT EXISTS roblox_links (user_id TEXT PRIMARY KEY, roblox_user_id TEXT NOT NULL, roblox_username TEXT NOT NULL, code TEXT NOT NULL, created_at INTEGER NOT NULL, verified_at INTEGER)",
+  "CREATE TABLE IF NOT EXISTS referrals (invitee_id TEXT PRIMARY KEY, inviter_id TEXT NOT NULL, code TEXT NOT NULL, created_at INTEGER NOT NULL, credited INTEGER NOT NULL DEFAULT 0)",
+  "CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id, credited)",
 ];
 
 async function ensureColumn(env: Env, table: string, column: string, ddl: string): Promise<void> {
@@ -118,6 +143,7 @@ export async function ensureSchema(env: Env): Promise<void> {
   if (existing && Number(existing.value) >= SCHEMA_VERSION) {
     await ensureBadgeArtOnce(env);
     await ensureOwnerPlusOnce(env);
+    await ensureQuestsOnce(env);
     return;
   }
   for (const sql of SCHEMA) {
@@ -125,6 +151,12 @@ export async function ensureSchema(env: Env): Promise<void> {
   }
   await ensureColumn(env, "badges", "art", "art TEXT");
   await ensureColumn(env, "badges", "unique_flag", "unique_flag INTEGER NOT NULL DEFAULT 0");
+  // Quest progression lives on the user row so profiles and leaderboards can
+  // read it without a join.
+  await ensureColumn(env, "users", "xp", "xp INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(env, "users", "quest_streak", "quest_streak INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(env, "users", "quest_streak_day", "quest_streak_day TEXT");
+  await ensureColumn(env, "users", "quest_streak_best", "quest_streak_best INTEGER NOT NULL DEFAULT 0");
   await env.DB.prepare(
     "INSERT INTO meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   )
@@ -133,6 +165,7 @@ export async function ensureSchema(env: Env): Promise<void> {
   await seedBadges(env);
   await ensureBadgeArtOnce(env);
   await ensureOwnerPlusOnce(env);
+  await ensureQuestsOnce(env);
   if (env.DEMO_SEED === "true") await seedDemo(env).catch((err) => console.error("seed failed", err));
 }
 
@@ -166,6 +199,9 @@ const SYSTEM_BADGE_ART: Record<string, string> = {
   creator: "pulse",
   event_winner: "laurel",
   early_supporter: "spark",
+  quest_recruit: "laurel",
+  quest_streak: "spark",
+  quest_legend: "origin",
 };
 
 export async function seedBadges(env: Env): Promise<void> {
@@ -185,6 +221,9 @@ export async function seedBadges(env: Env): Promise<void> {
     ["creator", "CONTENT CREATOR", "Creates content featured across ZUNO.", "#c084fc", "pen", "pulse", 0, 0, 0, 40],
     ["event_winner", "EVENT WINNER", "Won an official ZUNO community event.", "#facc15", "trophy", "laurel", 0, 0, 0, 35],
     ["early_supporter", "EARLY SUPPORTER", "Supported ZUNO from the very beginning.", "#5fe3ff", "heart", "spark", 0, 0, 0, 30],
+    ["quest_recruit", "QUEST ROOKIE", "Completed their first verified ZUNO quest.", "#5fe3ff", "trophy", "laurel", 0, 0, 1, 28],
+    ["quest_streak", "STREAK KEEPER", "Held a 7-day quest streak.", "#fb923c", "sparkles", "spark", 0, 0, 1, 27],
+    ["quest_legend", "QUEST LEGEND", "Reached quest level 10.", "#c084fc", "trophy", "origin", 0, 0, 1, 26],
   ];
   for (const [slug, name, description, color, glyph, art, unique, premium, automatic, sort] of badges) {
     await env.DB.prepare(
@@ -204,6 +243,125 @@ export async function ensureBadgeArt(env: Env): Promise<void> {
   }
   await env.DB.prepare("UPDATE badges SET unique_flag = 1 WHERE slug = 'owner'").run();
   await env.DB.prepare("UPDATE badges SET color = '#f472b6' WHERE slug = 'manager' AND color = '#f59e0b'").run();
+}
+
+/* ------------------------------------------------------------------ */
+/* Default quest catalogue. Ids are stable so the site can link to them.*/
+/* ------------------------------------------------------------------ */
+
+async function ensureQuestsOnce(env: Env): Promise<void> {
+  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'quests_seed_v1'")
+    .first<{ value: string }>()
+    .catch(() => null);
+  if (done) return;
+  const owner = await env.DB.prepare("SELECT id FROM users WHERE is_owner = 1 LIMIT 1")
+    .first<{ id: string }>()
+    .catch(() => null);
+  const createdBy = owner?.id ?? "system";
+  const t = now();
+  // title, description, instructions, category, difficulty, xp, verification,
+  // target, link, repeatable, cooldown hours, sort
+  const quests: [string, string, string, string, string, string, number, string, string, string, number, number, number][] = [
+    [
+      "q_daily_login",
+      "Daily check-in",
+      "Stop by ZUNO once a day to keep your streak alive.",
+      "Open ZUNO and press Claim. We check your last sign-in on the server, so there is nothing to paste.",
+      "daily",
+      "easy",
+      40,
+      "login",
+      "",
+      "",
+      1,
+      24,
+      100,
+    ],
+    [
+      "q_roblox_group",
+      "Join the official ZUNO Roblox group",
+      "Join our group on Roblox and ZUNO verifies it for you.",
+      "Link your Roblox account (profile code), then press Verify. We read your public group list directly from Roblox.",
+      "beginner",
+      "easy",
+      120,
+      "group_membership",
+      "",
+      "https://www.roblox.com/communities",
+      0,
+      0,
+      90,
+    ],
+    [
+      "q_roblox_game",
+      "Play the official ZUNO Roblox game",
+      "Jump into our Roblox game and play a round.",
+      "Roblox does not expose play history to third parties. Send your Roblox username after playing and a moderator confirms it.",
+      "beginner",
+      "medium",
+      150,
+      "game_visit",
+      "",
+      "https://www.roblox.com/games",
+      1,
+      24,
+      80,
+    ],
+    [
+      "q_roblox_milestone",
+      "Reach an in-game milestone",
+      "Hit the milestone our team announced for this season.",
+      "Describe or screenshot the milestone. In-game progress cannot be read through a public Roblox API, so staff review it.",
+      "event",
+      "hard",
+      300,
+      "manual",
+      "",
+      "",
+      0,
+      0,
+      70,
+    ],
+    [
+      "q_join_community",
+      "Join the ZUNO community",
+      "Become a member of our official ZUNO server.",
+      "Join the community with an invite, then press Verify. Membership is checked against the server itself.",
+      "beginner",
+      "easy",
+      80,
+      "community",
+      "",
+      "",
+      0,
+      0,
+      60,
+    ],
+    [
+      "q_invite_friends",
+      "Invite 3 friends to ZUNO",
+      "Share your referral link and bring three real people to ZUNO.",
+      "Copy your referral link below. Each account that signs up with it counts once, and self-referrals are ignored.",
+      "weekly",
+      "medium",
+      200,
+      "referral",
+      "3",
+      "",
+      1,
+      168,
+      50,
+    ],
+  ];
+  for (const [id, title, description, instructions, category, difficulty, xp, verification, target, link, repeatable, cooldown, sort] of quests) {
+    await env.DB.prepare(
+      `INSERT INTO quests (id, title, description, instructions, category, difficulty, xp, verification, target, link, repeatable, cooldown_hours, active, sort, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
+    )
+      .bind(id, title, description, instructions, category, difficulty, xp, verification, target, link, repeatable, cooldown, sort, createdBy, t, t)
+      .run();
+  }
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('quests_seed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
 }
 
 /* ------------------------------------------------------------------ */

@@ -5,7 +5,9 @@ import {
   Check,
   Crown,
   Database,
+  Gamepad2,
   Megaphone,
+  Plus,
   RefreshCw,
   Search,
   Settings,
@@ -30,6 +32,7 @@ const TABS = [
   { id: "appeals", label: "Appeals" },
   { id: "applications", label: "Applications" },
   { id: "servers", label: "Servers" },
+  { id: "quests", label: "Quests" },
   { id: "badges", label: "Badges" },
   { id: "announcements", label: "Announcements" },
   { id: "plus", label: "ZUNO PLUS" },
@@ -106,6 +109,7 @@ export function OwnerDashboard() {
         {tab === "appeals" && <AppealsTab />}
         {tab === "applications" && <ApplicationsTab />}
         {tab === "servers" && <ServersTab />}
+        {tab === "quests" && <QuestsTab />}
         {tab === "badges" && <BadgesTab />}
         {tab === "announcements" && <AnnouncementsTab />}
         {tab === "plus" && <PlusTab />}
@@ -1260,6 +1264,428 @@ function AuditTab() {
           </div>
         ))}
         {!loading && !data?.entries.length && <p className="sidebar-empty">No matching audit entries.</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------- QUESTS ------------------------------- */
+
+interface OwnerQuest {
+  id: string;
+  title: string;
+  description: string | null;
+  instructions: string | null;
+  category: string;
+  difficulty: string;
+  xp: number;
+  badge: string | null;
+  verification: string;
+  target: string | null;
+  link: string | null;
+  repeatable: boolean;
+  cooldownHours: number;
+  active: boolean;
+  startsAt: number | null;
+  endsAt: number | null;
+  sort: number;
+  verifiedCount: number;
+  pendingCount: number;
+  xpPaid: number;
+}
+
+interface OwnerReview {
+  id: string;
+  questId: string;
+  questTitle: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarId: string | null;
+  evidence: string | null;
+  note: string | null;
+  xp: number;
+  submittedAt: number;
+}
+
+interface QuestDraft {
+  id?: string;
+  title: string;
+  description: string;
+  instructions: string;
+  category: string;
+  difficulty: string;
+  xp: string;
+  badge: string;
+  verification: string;
+  target: string;
+  link: string;
+  repeatable: boolean;
+  cooldownHours: string;
+  active: boolean;
+  startsAt: string;
+  endsAt: string;
+  sort: string;
+}
+
+const EMPTY_QUEST: QuestDraft = {
+  title: "",
+  description: "",
+  instructions: "",
+  category: "daily",
+  difficulty: "easy",
+  xp: "50",
+  badge: "",
+  verification: "login",
+  target: "",
+  link: "",
+  repeatable: true,
+  cooldownHours: "24",
+  active: true,
+  startsAt: "",
+  endsAt: "",
+  sort: "0",
+};
+
+const VERIFICATION_HELP: Record<string, string> = {
+  login: "Server checks the member's sign-in. Fully automatic.",
+  group_membership: "Reads the public Roblox group list. Target = Roblox group id.",
+  community: "Checks ZUNO server membership. Target = server id.",
+  referral: "Counts credited referral signups. Target = how many are needed.",
+  game_visit: "Roblox does not expose play history — staff review the claim.",
+  milestone: "In-game milestones are not public — staff review the claim.",
+  manual: "Everything goes to the staff review queue.",
+};
+
+function toLocalInput(ms: number | null): string {
+  if (!ms) return "";
+  const date = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function QuestsTab() {
+  const app = useApp();
+  const { data, loading, reload } = useFetch<{
+    quests: OwnerQuest[];
+    totals: { pending: number; verified: number; xp: number; robloxLinks: number; referrals: number };
+  }>("/api/owner/quests");
+  const reviews = useFetch<{ reviews: OwnerReview[] }>("/api/owner/quests/reviews");
+  const [draft, setDraft] = useState<QuestDraft>(EMPTY_QUEST);
+  const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+
+  const set = <K extends keyof QuestDraft>(key: K, value: QuestDraft[K]) => setDraft((prev) => ({ ...prev, [key]: value }));
+
+  const startEdit = (quest: OwnerQuest) => {
+    setDraft({
+      id: quest.id,
+      title: quest.title,
+      description: quest.description ?? "",
+      instructions: quest.instructions ?? "",
+      category: quest.category,
+      difficulty: quest.difficulty,
+      xp: String(quest.xp),
+      badge: quest.badge ?? "",
+      verification: quest.verification,
+      target: quest.target ?? "",
+      link: quest.link ?? "",
+      repeatable: quest.repeatable,
+      cooldownHours: String(quest.cooldownHours),
+      active: quest.active,
+      startsAt: toLocalInput(quest.startsAt),
+      endsAt: toLocalInput(quest.endsAt),
+      sort: String(quest.sort),
+    });
+    setFormOpen(true);
+  };
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const body = {
+        title: draft.title,
+        description: draft.description,
+        instructions: draft.instructions,
+        category: draft.category,
+        difficulty: draft.difficulty,
+        xp: Number(draft.xp),
+        badge: draft.badge || null,
+        verification: draft.verification,
+        target: draft.target,
+        link: draft.link,
+        repeatable: draft.repeatable,
+        cooldownHours: Number(draft.cooldownHours),
+        active: draft.active,
+        startsAt: draft.startsAt ? new Date(draft.startsAt).getTime() : null,
+        endsAt: draft.endsAt ? new Date(draft.endsAt).getTime() : null,
+        sort: Number(draft.sort),
+      };
+      if (draft.id) await api(`/api/owner/quests/${draft.id}`, { method: "PATCH", body });
+      else await api("/api/owner/quests", { method: "POST", body });
+      app.toast(draft.id ? "Quest updated" : "Quest created", "success");
+      setDraft(EMPTY_QUEST);
+      setFormOpen(false);
+      await reload();
+    } catch (err) {
+      app.toast(err instanceof Error ? err.message : "Could not save that quest", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggle = async (quest: OwnerQuest) => {
+    try {
+      await api(`/api/owner/quests/${quest.id}`, {
+        method: "PATCH",
+        body: { ...quest, badge: quest.badge, active: !quest.active },
+      });
+      await reload();
+    } catch (err) {
+      app.toast(err instanceof Error ? err.message : "Could not change that quest", "error");
+    }
+  };
+
+  const remove = async (quest: OwnerQuest) => {
+    if (!window.confirm(`Delete “${quest.title}”? Claims and pending reviews for it are removed too.`)) return;
+    try {
+      await api(`/api/owner/quests/${quest.id}`, { method: "DELETE" });
+      app.toast("Quest deleted", "success");
+      await Promise.all([reload(), reviews.reload()]);
+    } catch (err) {
+      app.toast(err instanceof Error ? err.message : "Could not delete that quest", "error");
+    }
+  };
+
+  const review = async (claim: OwnerReview, approve: boolean) => {
+    const note = window.prompt(
+      approve ? "Approve this claim. Note for the member:" : "Reject this claim. Tell the member why:",
+      approve ? "Verified — nice work!" : "We could not verify this yet. Add more proof and try again.",
+    );
+    if (note === null) return;
+    try {
+      await api(`/api/owner/quests/reviews/${claim.id}`, { method: "POST", body: { action: approve ? "approve" : "reject", note } });
+      app.toast(approve ? `Approved — ${claim.xp} XP sent to @${claim.username}` : "Claim rejected", "success");
+      await Promise.all([reload(), reviews.reload()]);
+    } catch (err) {
+      app.toast(err instanceof Error ? err.message : "Could not review that claim", "error");
+    }
+  };
+
+  return (
+    <div className="owner-stack">
+      <div className="owner-toolbar">
+        <h2>
+          <Gamepad2 size={18} /> ZUNO Quests
+        </h2>
+        <button
+          type="button"
+          className="primary-btn small"
+          onClick={() => {
+            setDraft(EMPTY_QUEST);
+            setFormOpen((open) => !open);
+          }}
+        >
+          <Plus size={14} /> {formOpen ? "Close form" : "New quest"}
+        </button>
+      </div>
+
+      <div className="owner-grid quests-owner-grid">
+        <div className="owner-card owner-stat">
+          <span>Pending reviews</span>
+          <strong>{data?.totals.pending ?? 0}</strong>
+        </div>
+        <div className="owner-card owner-stat">
+          <span>Verified claims</span>
+          <strong>{data?.totals.verified ?? 0}</strong>
+        </div>
+        <div className="owner-card owner-stat">
+          <span>XP paid out</span>
+          <strong>{compact(data?.totals.xp ?? 0)}</strong>
+        </div>
+        <div className="owner-card owner-stat">
+          <span>Roblox links</span>
+          <strong>{data?.totals.robloxLinks ?? 0}</strong>
+        </div>
+        <div className="owner-card owner-stat">
+          <span>Verified referrals</span>
+          <strong>{data?.totals.referrals ?? 0}</strong>
+        </div>
+      </div>
+
+      {formOpen && (
+        <form className="owner-card quest-form" onSubmit={save}>
+          <h3>{draft.id ? "Edit quest" : "Create quest"}</h3>
+          <div className="owner-form-grid">
+            <label className="mini-field">
+              Title
+              <input value={draft.title} onChange={(e) => set("title", e.target.value)} maxLength={90} required />
+            </label>
+            <label className="mini-field">
+              Category
+              <select value={draft.category} onChange={(e) => set("category", e.target.value)}>
+                {["daily", "weekly", "beginner", "event"].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mini-field">
+              Difficulty
+              <select value={draft.difficulty} onChange={(e) => set("difficulty", e.target.value)}>
+                {["easy", "medium", "hard", "elite"].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mini-field">
+              XP reward
+              <input type="number" min={1} max={5000} value={draft.xp} onChange={(e) => set("xp", e.target.value)} />
+            </label>
+            <label className="mini-field">
+              Verification
+              <select value={draft.verification} onChange={(e) => set("verification", e.target.value)}>
+                {["login", "group_membership", "community", "referral", "game_visit", "milestone", "manual"].map((v) => (
+                  <option key={v} value={v}>
+                    {v.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mini-field">
+              Target (group / server id / referral count)
+              <input value={draft.target} onChange={(e) => set("target", e.target.value)} maxLength={120} />
+            </label>
+            <label className="mini-field">
+              Link (https://…)
+              <input value={draft.link} onChange={(e) => set("link", e.target.value)} maxLength={300} />
+            </label>
+            <label className="mini-field">
+              Reward badge slug (optional)
+              <input value={draft.badge} onChange={(e) => set("badge", e.target.value)} maxLength={40} placeholder="e.g. quest_recruit" />
+            </label>
+            <label className="mini-field">
+              Starts at
+              <input type="datetime-local" value={draft.startsAt} onChange={(e) => set("startsAt", e.target.value)} />
+            </label>
+            <label className="mini-field">
+              Ends at
+              <input type="datetime-local" value={draft.endsAt} onChange={(e) => set("endsAt", e.target.value)} />
+            </label>
+            <label className="mini-field">
+              Repeat cooldown (hours)
+              <input type="number" min={1} max={8760} value={draft.cooldownHours} onChange={(e) => set("cooldownHours", e.target.value)} />
+            </label>
+            <label className="mini-field">
+              Sort weight
+              <input type="number" value={draft.sort} onChange={(e) => set("sort", e.target.value)} />
+            </label>
+          </div>
+          <label className="mini-field">
+            Short description
+            <input value={draft.description} onChange={(e) => set("description", e.target.value)} maxLength={600} />
+          </label>
+          <label className="mini-field">
+            Instructions shown on the quest card
+            <textarea value={draft.instructions} onChange={(e) => set("instructions", e.target.value)} maxLength={1200} />
+          </label>
+          <p className="form-hint">{VERIFICATION_HELP[draft.verification]}</p>
+          <div className="quest-form-flags">
+            <label>
+              <input type="checkbox" checked={draft.repeatable} onChange={(e) => set("repeatable", e.target.checked)} /> Repeatable
+            </label>
+            <label>
+              <input type="checkbox" checked={draft.active} onChange={(e) => set("active", e.target.checked)} /> Active
+            </label>
+          </div>
+          <div className="report-actions">
+            <button type="submit" className="primary-btn small" disabled={saving}>
+              {saving ? <RefreshCw size={13} className="spin" /> : <Check size={13} />} {draft.id ? "Save changes" : "Create quest"}
+            </button>
+            <button
+              type="button"
+              className="ghost-btn small"
+              onClick={() => {
+                setDraft(EMPTY_QUEST);
+                setFormOpen(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="owner-toolbar">
+        <h2>Review queue</h2>
+        <span className="owner-note-small">{reviews.data?.reviews.length ?? 0} waiting</span>
+      </div>
+      {reviews.loading && <p className="sidebar-empty">Loading claims…</p>}
+      {!reviews.loading && !reviews.data?.reviews.length && <p className="sidebar-empty">No claims waiting on review.</p>}
+      {(reviews.data?.reviews ?? []).map((claim) => (
+        <div className="owner-card quest-review" key={claim.id}>
+          <div className="report-head">
+            <span className="report-status pending">pending</span>
+            <strong>
+              {claim.displayName} · {claim.questTitle}
+            </strong>
+            <time>{formatShort(claim.submittedAt)}</time>
+          </div>
+          {claim.note && <p className="form-hint">{claim.note}</p>}
+          <p>{claim.evidence || "No evidence supplied."}</p>
+          <div className="report-actions">
+            <button type="button" className="primary-btn small" onClick={() => void review(claim, true)}>
+              <Check size={13} /> Approve +{claim.xp} XP
+            </button>
+            <button type="button" className="ghost-btn small" onClick={() => void review(claim, false)}>
+              <X size={13} /> Reject
+            </button>
+            <button type="button" className="ghost-btn small" onClick={() => void app.openProfile(claim.userId)}>
+              View member
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div className="owner-toolbar">
+        <h2>All quests</h2>
+        <button type="button" className="ghost-btn small" onClick={() => void reload()}>
+          <RefreshCw size={13} /> Refresh
+        </button>
+      </div>
+      {loading && <p className="sidebar-empty">Loading quests…</p>}
+      <div className="owner-card owner-table quest-table">
+        {(data?.quests ?? []).map((quest) => (
+          <div className="quest-table-row" key={quest.id}>
+            <div className="quest-table-main">
+              <strong>
+                {quest.title} {!quest.active && <em className="quest-off">disabled</em>}
+              </strong>
+              <span>
+                {quest.category} · {quest.difficulty} · {quest.verification.replace(/_/g, " ")} · +{quest.xp} XP
+              </span>
+              <span className="quest-table-stats">
+                {quest.verifiedCount} verified · {quest.pendingCount} pending · {compact(quest.xpPaid)} XP paid
+              </span>
+            </div>
+            <div className="quest-table-actions">
+              <button type="button" className="ghost-btn small" onClick={() => startEdit(quest)}>
+                Edit
+              </button>
+              <button type="button" className="ghost-btn small" onClick={() => void toggle(quest)}>
+                {quest.active ? "Disable" : "Enable"}
+              </button>
+              <button type="button" className="ghost-btn small danger-text" onClick={() => void remove(quest)}>
+                <Trash2 size={13} /> Delete
+              </button>
+            </div>
+          </div>
+        ))}
+        {!loading && !data?.quests.length && <p className="sidebar-empty">No quests yet — create the first one.</p>}
       </div>
     </div>
   );

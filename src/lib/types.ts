@@ -1,3 +1,69 @@
+export interface QuestClaim {
+  id: string;
+  status: "pending" | "verified" | "rejected";
+  submittedAt: number;
+  reviewedAt: number | null;
+  note: string | null;
+  xp: number;
+}
+
+export interface Quest {
+  id: string;
+  title: string;
+  description: string | null;
+  instructions: string | null;
+  category: "daily" | "weekly" | "beginner" | "event" | string;
+  difficulty: "easy" | "medium" | "hard" | "elite" | string;
+  xp: number;
+  badge: string | null;
+  verification: string;
+  link: string | null;
+  repeatable: boolean;
+  active: boolean;
+  state: "live" | "scheduled" | "ended" | "disabled";
+  startsAt: number | null;
+  endsAt: number | null;
+  completedCount: number;
+  claim: QuestClaim | null;
+  canClaim: boolean;
+}
+
+export interface QuestSummary {
+  xp: number;
+  level: number;
+  intoLevel: number;
+  nextLevelXp: number;
+  streak: number;
+  bestStreak: number;
+  completed: number;
+  pending: number;
+  referrals: number;
+  referralCode: string;
+  roblox: { username: string; userId: string; verified: boolean; code: string | null } | null;
+}
+
+export interface QuestHistoryEntry {
+  id: string;
+  questId: string;
+  title: string;
+  status: "pending" | "verified" | "rejected";
+  xp: number;
+  at: number;
+  note: string | null;
+}
+
+export interface QuestBoardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarId: string | null;
+  xp: number;
+  streak: number;
+  isOwner: boolean;
+  badges: Badge[];
+}
+
 export interface Badge {
   slug: string;
   name: string;

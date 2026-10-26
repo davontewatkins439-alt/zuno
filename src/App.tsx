@@ -12,6 +12,7 @@ import { HomeView, FriendsView, DiscoverView } from "./components/Views";
 import { OwnerDashboard } from "./components/OwnerDashboard";
 import { PlusStore } from "./components/PlusStore";
 import { StaffView } from "./components/StaffView";
+import { QuestsView } from "./components/QuestsView";
 import { InviteLanding } from "./components/InviteLanding";
 import { RightPanel } from "./components/Panels";
 import { CallOverlay } from "./components/CallOverlay";
@@ -181,6 +182,8 @@ function Shell() {
       <PlusStore />
     ) : app.route.name === "staff" ? (
       <StaffView />
+    ) : app.route.name === "quests" ? (
+      <QuestsView />
     ) : app.route.name === "friends" ? (
       <FriendsView />
     ) : app.route.name === "discover" ? (

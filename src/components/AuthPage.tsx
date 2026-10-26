@@ -32,10 +32,11 @@ export function AuthPage({ onAuthed, inviteCode }: { onAuthed: (me: Me) => void;
     setError(null);
     setBusy(true);
     try {
+      const ref = new URLSearchParams(window.location.search).get("ref") ?? undefined;
       const payload =
         mode === "login"
           ? { email, password }
-          : { email, password, username, displayName: displayName || username };
+          : { email, password, username, displayName: displayName || username, ref };
       const me = await api<Me>(`/api/${mode}`, { method: "POST", body: payload });
       onAuthed(me);
     } catch (err) {

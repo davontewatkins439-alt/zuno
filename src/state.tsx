@@ -33,6 +33,7 @@ export type Route =
   | { name: "discover" }
   | { name: "plus" }
   | { name: "staff" }
+  | { name: "quests" }
   | { name: "owner" }
   | { name: "invite"; code: string }
   | { name: "server"; serverId: string; channelId?: string }
@@ -184,6 +185,7 @@ function parseRoute(): Route {
   if (path === "/discover") return { name: "discover" };
   if (path === "/plus") return { name: "plus" };
   if (path === "/staff") return { name: "staff" };
+  if (path === "/quests") return { name: "quests" };
   if (path === "/owner") return { name: "owner" };
   const invite = path.match(/^\/invite\/([^/]+)$/);
   if (invite) return { name: "invite", code: decodeURIComponent(invite[1]) };

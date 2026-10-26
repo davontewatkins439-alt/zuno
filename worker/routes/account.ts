@@ -150,6 +150,28 @@ account.post("/register", async (c) => {
     const count = await db.prepare("SELECT COUNT(*) as n FROM users").first<{ n: number }>();
     if ((count?.n ?? 0) <= 100) await grantBadge(db, id, "early_supporter", null);
   }
+  // Referral tracking: the code is the inviter's user id. Only real accounts
+  // count, one credit per signup, and nobody can refer themselves.
+  const ref = str(body.ref, 60);
+  if (ref && ref !== id) {
+    const inviter = await db
+      .prepare("SELECT id FROM users WHERE id = ? AND platform_banned = 0")
+      .bind(ref)
+      .first<{ id: string }>();
+    if (inviter) {
+      await db
+        .prepare("INSERT OR IGNORE INTO referrals (invitee_id, inviter_id, code, created_at, credited) VALUES (?, ?, ?, ?, 1)")
+        .bind(id, inviter.id, ref, created)
+        .run();
+      await notify(db, {
+        userId: inviter.id,
+        kind: "quest",
+        title: "A friend joined ZUNO with your link",
+        body: `@${username.toLowerCase()} signed up. Progress towards your invite quests has been updated.`,
+        actorId: id,
+      });
+    }
+  }
   await createSession(c, id);
   await audit(db, { actorId: id, action: "user.register", targetType: "user", targetId: id });
   const user = await userById(db, id);

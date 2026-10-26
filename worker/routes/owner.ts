@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import type { Env, SessionUser } from "../env";
 import { BADGE_ARTS, getConfig, setConfig } from "../db";
-import { bad, clamp, now, num, readJson, str, uid } from "../lib";
+import { bad, bool, clamp, now, num, readJson, str, uid } from "../lib";
 import { audit, emit, notify } from "../perms";
 import { badgesFor, decorate } from "../service";
+import { reviewClaim } from "./quests";
 
 type Ctx = { Bindings: Env; Variables: { user: SessionUser } };
 export const owner = new Hono<Ctx>();
@@ -905,4 +906,264 @@ owner.get("/staff", async (c) => {
   return c.json({
     staff: rows.results.map((r) => decorate(r, badgeMap.get(String(r.id)) ?? [])),
   });
+});
+
+/* ------------------------------- QUESTS ------------------------------- */
+
+const QUEST_CATEGORIES = new Set(["daily", "weekly", "beginner", "event"]);
+const QUEST_DIFFICULTIES = new Set(["easy", "medium", "hard", "elite"]);
+// Only methods the server can actually check on its own are offered.
+const QUEST_VERIFICATIONS = new Set([
+  "login",
+  "group_membership",
+  "community",
+  "referral",
+  "game_visit",
+  "milestone",
+  "manual",
+]);
+
+interface QuestInput {
+  title: string;
+  description: string;
+  instructions: string;
+  category: string;
+  difficulty: string;
+  xp: number;
+  badge: string | null;
+  verification: string;
+  target: string;
+  link: string;
+  repeatable: number;
+  cooldownHours: number;
+  active: number;
+  startsAt: number | null;
+  endsAt: number | null;
+  sort: number;
+}
+
+function readQuest(body: Record<string, unknown>): { values: QuestInput } | { error: string } {
+  const title = str(body.title, 90);
+  if (title.length < 3) return { error: "Give the quest a title (at least 3 characters)." };
+  const category = str(body.category, 20) || "daily";
+  if (!QUEST_CATEGORIES.has(category)) return { error: "Unknown quest category." };
+  const difficulty = str(body.difficulty, 20) || "easy";
+  if (!QUEST_DIFFICULTIES.has(difficulty)) return { error: "Unknown difficulty." };
+  const verification = str(body.verification, 30) || "manual";
+  if (!QUEST_VERIFICATIONS.has(verification)) return { error: "Unknown verification method." };
+  const xp = clamp(num(body.xp, 50), 1, 5000);
+  const link = str(body.link, 300);
+  if (link && !/^https?:\/\//i.test(link)) return { error: "Quest links must start with http:// or https://." };
+  const startsAt = body.startsAt === null || body.startsAt === undefined || body.startsAt === "" ? null : num(body.startsAt, 0) || null;
+  const endsAt = body.endsAt === null || body.endsAt === undefined || body.endsAt === "" ? null : num(body.endsAt, 0) || null;
+  if (startsAt && endsAt && endsAt <= startsAt) return { error: "The end date must be after the start date." };
+  const badge = str(body.badge, 40) || null;
+  return {
+    values: {
+      title,
+      description: str(body.description, 600),
+      instructions: str(body.instructions, 1200),
+      category,
+      difficulty,
+      xp,
+      badge,
+      verification,
+      target: str(body.target, 120),
+      link,
+      repeatable: bool(body.repeatable) ? 1 : 0,
+      cooldownHours: clamp(num(body.cooldownHours, 24), 1, 8760),
+      active: body.active === undefined ? 1 : bool(body.active) ? 1 : 0,
+      startsAt,
+      endsAt,
+      sort: clamp(num(body.sort, 0), -1000, 1000),
+    },
+  };
+}
+
+owner.get("/quests", async (c) => {
+  const db = c.env.DB;
+  const rows = await db
+    .prepare(
+      `SELECT q.*,
+         (SELECT COUNT(*) FROM quest_claims c WHERE c.quest_id = q.id AND c.status = 'verified') AS verified_count,
+         (SELECT COUNT(*) FROM quest_claims c WHERE c.quest_id = q.id AND c.status = 'pending') AS pending_count,
+         (SELECT COALESCE(SUM(c.xp_awarded), 0) FROM quest_claims c WHERE c.quest_id = q.id) AS xp_paid
+       FROM quests q ORDER BY q.sort DESC, q.created_at DESC`,
+    )
+    .all<Record<string, unknown>>();
+  const totals = await db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM quest_claims WHERE status = 'pending') AS pending,
+         (SELECT COUNT(*) FROM quest_claims WHERE status = 'verified') AS verified,
+         (SELECT COALESCE(SUM(amount), 0) FROM quest_xp) AS xp,
+         (SELECT COUNT(*) FROM roblox_links WHERE verified_at IS NOT NULL) AS roblox,
+         (SELECT COUNT(*) FROM referrals WHERE credited = 1) AS referrals`,
+    )
+    .first<Record<string, number>>();
+  return c.json({
+    quests: rows.results.map((row) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      instructions: row.instructions,
+      category: row.category,
+      difficulty: row.difficulty,
+      xp: row.xp,
+      badge: row.badge_slug,
+      verification: row.verification,
+      target: row.target,
+      link: row.link,
+      repeatable: !!row.repeatable,
+      cooldownHours: row.cooldown_hours,
+      active: !!row.active,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      sort: row.sort,
+      verifiedCount: row.verified_count ?? 0,
+      pendingCount: row.pending_count ?? 0,
+      xpPaid: row.xp_paid ?? 0,
+    })),
+    totals: {
+      pending: totals?.pending ?? 0,
+      verified: totals?.verified ?? 0,
+      xp: totals?.xp ?? 0,
+      robloxLinks: totals?.roblox ?? 0,
+      referrals: totals?.referrals ?? 0,
+    },
+  });
+});
+
+owner.post("/quests", async (c) => {
+  const me = c.get("user");
+  const db = c.env.DB;
+  const parsed = readQuest(await readJson<Record<string, unknown>>(c));
+  if ("error" in parsed) return bad(c, parsed.error);
+  const v = parsed.values;
+  const id = `q_${uid().slice(0, 8)}`;
+  const t = now();
+  await db.prepare(
+    `INSERT INTO quests (id, title, description, instructions, category, difficulty, xp, badge_slug, verification, target, link, repeatable, cooldown_hours, active, starts_at, ends_at, sort, created_by, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      id,
+      v.title,
+      v.description,
+      v.instructions,
+      v.category,
+      v.difficulty,
+      v.xp,
+      v.badge,
+      v.verification,
+      v.target,
+      v.link,
+      v.repeatable,
+      v.cooldownHours,
+      v.active,
+      v.startsAt,
+      v.endsAt,
+      v.sort,
+      me.id,
+      t,
+      t,
+    )
+    .run();
+  await audit(db, { actorId: me.id, action: "quest.create", targetType: "quest", targetId: id, meta: { title: v.title } });
+  return c.json({ ok: true, id });
+});
+
+owner.patch("/quests/:id", async (c) => {
+  const me = c.get("user");
+  const db = c.env.DB;
+  const id = c.req.param("id");
+  const existing = await c.env.DB.prepare("SELECT id FROM quests WHERE id = ?").bind(id).first();
+  if (!existing) return bad(c, "That quest no longer exists.", 404);
+  const parsed = readQuest(await readJson<Record<string, unknown>>(c));
+  if ("error" in parsed) return bad(c, parsed.error);
+  const v = parsed.values;
+  await c.env.DB.prepare(
+    `UPDATE quests SET title = ?, description = ?, instructions = ?, category = ?, difficulty = ?, xp = ?, badge_slug = ?,
+       verification = ?, target = ?, link = ?, repeatable = ?, cooldown_hours = ?, active = ?, starts_at = ?, ends_at = ?, sort = ?, updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(
+      v.title,
+      v.description,
+      v.instructions,
+      v.category,
+      v.difficulty,
+      v.xp,
+      v.badge,
+      v.verification,
+      v.target,
+      v.link,
+      v.repeatable,
+      v.cooldownHours,
+      v.active,
+      v.startsAt,
+      v.endsAt,
+      v.sort,
+      now(),
+      id,
+    )
+    .run();
+  await audit(db, { actorId: me.id, action: "quest.update", targetType: "quest", targetId: id, meta: { title: v.title } });
+  return c.json({ ok: true, id });
+});
+
+owner.delete("/quests/:id", async (c) => {
+  const me = c.get("user");
+  const id = c.req.param("id");
+  const db = c.env.DB;
+  const quest = await db.prepare("SELECT title FROM quests WHERE id = ?").bind(id).first<{ title: string }>();
+  if (!quest) return bad(c, "That quest no longer exists.", 404);
+  await db.batch([
+    db.prepare("DELETE FROM quest_claims WHERE quest_id = ?").bind(id),
+    db.prepare("DELETE FROM quests WHERE id = ?").bind(id),
+  ]);
+  await audit(db, { actorId: me.id, action: "quest.delete", targetType: "quest", targetId: id, meta: { title: quest.title } });
+  return c.json({ ok: true });
+});
+
+owner.get("/quests/reviews", async (c) => {
+  const rows = await c.env.DB.prepare(
+    `SELECT c.id, c.quest_id, c.user_id, c.evidence, c.submitted_at, c.review_note,
+            q.title AS quest_title, q.xp, q.category, u.username, u.display_name, u.avatar_id
+     FROM quest_claims c
+     JOIN quests q ON q.id = c.quest_id
+     JOIN users u ON u.id = c.user_id
+     WHERE c.status = 'pending' ORDER BY c.submitted_at ASC LIMIT 100`,
+  ).all<Record<string, unknown>>();
+  return c.json({
+    reviews: rows.results.map((row) => ({
+      id: row.id,
+      questId: row.quest_id,
+      questTitle: row.quest_title,
+      userId: row.user_id,
+      username: row.username,
+      displayName: row.display_name || row.username,
+      avatarId: row.avatar_id,
+      evidence: row.evidence,
+      note: row.review_note,
+      xp: row.xp,
+      submittedAt: row.submitted_at,
+    })),
+  });
+});
+
+owner.post("/quests/reviews/:id", async (c) => {
+  const me = c.get("user");
+  const body = await readJson<Record<string, unknown>>(c);
+  const approve = str(body.action, 20) === "approve";
+  const note = str(body.note, 300);
+  const result = await reviewClaim(c.env, c.req.param("id"), me.id, approve, note);
+  if (!result.ok) return bad(c, result.error, 409);
+  await audit(c.env.DB, {
+    actorId: me.id,
+    action: approve ? "quest.approve" : "quest.reject",
+    targetType: "quest_claim",
+    targetId: c.req.param("id"),
+  });
+  return c.json({ ok: true, status: result.status });
 });
