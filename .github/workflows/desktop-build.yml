@@ -49,15 +49,16 @@ jobs:
           tagName: desktop-v__VERSION__
           releaseName: "ZUNO __VERSION__ for Windows"
           releaseBody: |
-            ## ZUNO ${{ github.ref_name }} for Windows
+            ## ZUNO __VERSION__ for Windows
 
-            Download **ZUNO_${{ github.ref_name }}_x64-setup.exe** below and run it to install ZUNO.
+            Download the **x64 setup .exe** below and run it to install ZUNO.
 
             - Windows 10 or 11, 64-bit
             - Signs in to https://zunoo.freebuff.page — same account, same servers, same DMs
             - Unsigned build: Windows SmartScreen may warn, choose **More info → Run anyway**
           releaseDraft: false
           prerelease: false
+          includeUpdaterJson: false
           args: "--bundles nsis"
 
       - name: Upload Windows installers
