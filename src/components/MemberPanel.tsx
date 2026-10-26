@@ -4,6 +4,7 @@ import { useApp } from "../state";
 import type { ServerMember } from "../lib/types";
 import { cls } from "../lib/utils";
 import { plateClass } from "../lib/nameplates";
+import { PlateArt } from "./PlateArt";
 import { Avatar, BadgeRow, IconButton, Verified } from "./ui";
 
 function roleColorFor(member: ServerMember, roles: { id: string; color: string | null; position: number }[]) {
@@ -88,7 +89,8 @@ export function MemberPanel({ onClose }: { onClose: () => void }) {
                   />
                   <span className="member-copy">
                     <span className={cls("member-name", "plate-name", plateClass(member.nameplate))} style={color ? { color } : undefined}>
-                      {member.nickname || member.displayName}
+                      <PlateArt id={member.nameplate} />
+                      <span className="plate-label">{member.nickname || member.displayName}</span>
                       {member.isOwner && (
                         <span className="crown" title="ZUNO Owner">
                           <Crown size={12} />

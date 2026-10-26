@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { hashPassword } from "./auth";
 import { now } from "./lib";
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
@@ -97,9 +97,11 @@ const SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS nameplates (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, rarity TEXT NOT NULL DEFAULT 'standard',
     unlock TEXT NOT NULL DEFAULT 'free', animation TEXT, active INTEGER NOT NULL DEFAULT 1,
-    sort INTEGER NOT NULL DEFAULT 0
+    sort INTEGER NOT NULL DEFAULT 0, released_at INTEGER NOT NULL DEFAULT 0, available_until INTEGER
   )`,
   "CREATE TABLE IF NOT EXISTS user_nameplates (user_id TEXT NOT NULL, nameplate_id TEXT NOT NULL, granted_by TEXT, granted_at INTEGER NOT NULL, PRIMARY KEY (user_id, nameplate_id))",
+  "CREATE TABLE IF NOT EXISTS nameplate_favorites (user_id TEXT NOT NULL, nameplate_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (user_id, nameplate_id))",
+  "CREATE INDEX IF NOT EXISTS idx_nameplate_favorites_user ON nameplate_favorites(user_id)",
   "CREATE INDEX IF NOT EXISTS idx_server_boosts_server ON server_boosts(server_id)",
 ];
 
@@ -175,6 +177,9 @@ export async function ensureSchema(env: Env): Promise<void> {
   await ensureColumn(env, "servers", "boost_goal", "boost_goal INTEGER NOT NULL DEFAULT 10");
   await ensureColumn(env, "servers", "boost_bar", "boost_bar INTEGER NOT NULL DEFAULT 1");
   await ensureColumn(env, "users", "nameplate", "nameplate TEXT");
+  // Limited-edition plates retire after a date; released_at drives the NEW tag.
+  await ensureColumn(env, "nameplates", "released_at", "released_at INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(env, "nameplates", "available_until", "available_until INTEGER");
   await env.DB.prepare(
     "INSERT INTO meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   )
@@ -389,10 +394,12 @@ async function ensureQuestsOnce(env: Env): Promise<void> {
 /* ------------------------------------------------------------------ */
 
 async function ensureNameplatesOnce(env: Env): Promise<void> {
-  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'nameplates_seed_v1'")
+  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'nameplates_seed_v2'")
     .first<{ value: string }>()
     .catch(() => null);
   if (done) return;
+  const t = now();
+  const day = 86_400_000;
   const plates: [string, string, string, string, string, string | null, number][] = [
     [
       "midnight-circuit",
@@ -418,7 +425,26 @@ async function ensureNameplatesOnce(env: Env): Promise<void> {
       .bind(id, name, description, rarity, unlock, animation, sort)
       .run();
   }
+
+  // Seasonal drop. `available_until` retires a plate for everyone but the
+  // owner; anything already unlocked stays usable.
+  const drop: [string, string, string, string, string, number, number | null][] = [
+    ["lunar-static", "Lunar Static", "Pale moonlight over a quiet signal band.", "premium", "plus", 88, t + 9 * day],
+    ["hexglow", "Hexglow", "Witchfire hexes burning violet into amber.", "premium", "plus", 86, t + 8 * day],
+    ["prism-riot", "Prism Riot", "Shattered glass throwing every colour at once.", "premium", "plus", 76, null],
+    ["carbon-bloom", "Carbon Bloom", "Matte carbon weave with a mint undertow.", "standard", "plus", 66, null],
+    ["ice-vault", "Ice Vault", "Frosted facets locked behind reinforced glass.", "standard", "free", 56, null],
+    ["afterglow", "Afterglow", "The last warm light after the neon dies.", "premium", "plus", 46, null],
+  ];
+  for (const [id, name, description, rarity, unlock, sort, availableUntil] of drop) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort, released_at, available_until) VALUES (?, ?, ?, ?, ?, NULL, 1, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, rarity, unlock, sort, t, availableUntil)
+      .run();
+  }
   await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v2', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
 }
 
 /* ------------------------------------------------------------------ */

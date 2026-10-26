@@ -72,9 +72,15 @@ export interface Nameplate {
   animation: string | null;
   unlock: string;
   unlockHint: string;
+  limited: boolean;
+  endsAt: number | null;
+  releasedAt: number;
+  isNew: boolean;
   unlocked: boolean;
+  equippable: boolean;
   equipped: boolean;
   equippedBy: number;
+  favorite: boolean;
 }
 
 export interface Badge {

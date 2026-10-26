@@ -1,11 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Crown, Loader2, Lock, Palette, RefreshCw, Search, Sparkles, X } from "lucide-react";
+import {
+  Check,
+  Crown,
+  Heart,
+  Loader2,
+  Lock,
+  Palette,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Timer,
+  X,
+} from "lucide-react";
 import { useApp } from "../state";
 import { api, ApiError } from "../lib/api";
 import type { Nameplate } from "../lib/types";
 import { cls } from "../lib/utils";
 import { plateClass } from "../lib/nameplates";
 import { Avatar } from "./ui";
+import { PlateArt } from "./PlateArt";
 
 interface Payload {
   plusActive: boolean;
@@ -13,12 +27,29 @@ interface Payload {
   nameplates: Nameplate[];
 }
 
-const FILTERS = [
-  { id: "all", label: "All" },
+const TIERS = [
+  { id: "all", label: "All plates" },
   { id: "free", label: "Free" },
   { id: "plus", label: "ZUNO PLUS" },
   { id: "owner", label: "Owner" },
+  { id: "favorites", label: "Favourites" },
 ] as const;
+
+const RARITIES = [
+  { id: "any", label: "Any rarity" },
+  { id: "standard", label: "Standard" },
+  { id: "premium", label: "Premium" },
+  { id: "legendary", label: "Legendary" },
+] as const;
+
+type SortId = "popular" | "newest" | "rarity" | "az";
+
+const RARITY_RANK: Record<string, number> = { legendary: 3, premium: 2, standard: 1 };
+
+function daysLeft(endsAt: number | null): number | null {
+  if (!endsAt) return null;
+  return Math.max(0, Math.ceil((endsAt - Date.now()) / 86_400_000));
+}
 
 export function NameplatesView() {
   const app = useApp();
@@ -26,8 +57,11 @@ export function NameplatesView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<string>("all");
-  const [sort, setSort] = useState<"popular" | "newest" | "rarity">("popular");
+  const [tier, setTier] = useState<string>("all");
+  const [rarity, setRarity] = useState<string>("any");
+  const [limitedOnly, setLimitedOnly] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState<SortId>("popular");
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -46,17 +80,37 @@ export function NameplatesView() {
     void load();
   }, [load]);
 
-  const act = async (plate: Nameplate) => {
+  const equip = async (plate: Nameplate) => {
     setBusy(plate.id);
     try {
-      if (!plate.unlocked) {
-        await api(`/api/nameplates/${plate.id}/unlock`, { method: "POST" });
-      }
+      if (!plate.unlocked) await api(`/api/nameplates/${plate.id}/unlock`, { method: "POST" });
       await api(`/api/nameplates/${plate.id}/equip`, { method: "POST" });
       await Promise.all([load(), app.refreshMe(true)]);
       app.toast(`${plate.name} equipped`, "success");
     } catch (err) {
       app.toast(err instanceof ApiError ? err.message : "That nameplate could not be equipped.", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const unfavorite = async (plate: Nameplate) => {
+    setBusy(`fav-${plate.id}`);
+    try {
+      const res = await api<{ favorite: boolean }>(`/api/nameplates/${plate.id}/favorite`, { method: "POST" });
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              nameplates: prev.nameplates.map((entry) =>
+                entry.id === plate.id ? { ...entry, favorite: res.favorite } : entry,
+              ),
+            }
+          : prev,
+      );
+      app.toast(res.favorite ? `${plate.name} saved` : `${plate.name} removed from favourites`, "info");
+    } catch (err) {
+      app.toast(err instanceof ApiError ? err.message : "Could not update favourites.", "error");
     } finally {
       setBusy(null);
     }
@@ -75,25 +129,28 @@ export function NameplatesView() {
     }
   };
 
-  const rarityRank: Record<string, number> = { legendary: 3, premium: 2, standard: 1 };
+  const plates = data?.nameplates ?? [];
 
   const visible = useMemo(() => {
-    const list = (data?.nameplates ?? []).filter((plate) => {
-      if (filter === "free" && plate.unlock !== "free") return false;
-      if (filter === "plus" && plate.unlock !== "plus") return false;
-      if (filter === "owner" && plate.unlock !== "owner") return false;
-      if (!query.trim()) return true;
-      const q = query.toLowerCase();
+    const q = query.trim().toLowerCase();
+    const list = plates.filter((plate) => {
+      if (tier === "favorites" && !plate.favorite) return false;
+      if (tier !== "all" && tier !== "favorites" && plate.unlock !== tier) return false;
+      if (rarity !== "any" && plate.rarity !== rarity) return false;
+      if (limitedOnly && !plate.limited) return false;
+      if (!q) return true;
       return plate.name.toLowerCase().includes(q) || (plate.description ?? "").toLowerCase().includes(q);
     });
     return list.sort((a, b) => {
-      if (sort === "newest") return b.id.localeCompare(a.id);
-      if (sort === "rarity") return (rarityRank[b.rarity] ?? 0) - (rarityRank[a.rarity] ?? 0) || a.name.localeCompare(b.name);
+      if (sort === "newest") return b.releasedAt - a.releasedAt || b.id.localeCompare(a.id);
+      if (sort === "rarity") return (RARITY_RANK[b.rarity] ?? 0) - (RARITY_RANK[a.rarity] ?? 0) || a.name.localeCompare(b.name);
+      if (sort === "az") return a.name.localeCompare(b.name);
       return b.equippedBy - a.equippedBy || a.name.localeCompare(b.name);
     });
-  }, [data?.nameplates, filter, query, sort]);
+  }, [plates, tier, rarity, limitedOnly, query, sort]);
 
-  const equipped = data?.nameplates.find((plate) => plate.equipped) ?? null;
+  const equipped = plates.find((plate) => plate.equipped) ?? null;
+  const favorites = plates.filter((plate) => plate.favorite).length;
 
   return (
     <section className="plates-view">
@@ -102,18 +159,38 @@ export function NameplatesView() {
           <span className="eyebrow">
             <Palette size={14} /> ZUNO NAME COSMETICS
           </span>
-          <h1>Nameplates</h1>
-          <p>Your name, but louder. Plates paint a banner behind your display name everywhere it appears.</p>
+          <h1>
+            Nameplates <span className="plates-total">({plates.length})</span>
+          </h1>
+          <p>Paint the banner behind your display name. Your plate follows you into every server, DM and profile.</p>
         </div>
-        <div className="plates-count">
-          <strong>{data?.nameplates.length ?? 0}</strong>
-          <span>plates</span>
+        <div className="plates-head-tools">
+          <label className="plates-sortby">
+            <span>Sort by</span>
+            <select value={sort} onChange={(event) => setSort(event.target.value as SortId)}>
+              <option value="popular">Popular</option>
+              <option value="newest">Newest</option>
+              <option value="rarity">Rarity</option>
+              <option value="az">A–Z</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={cls("ghost-btn", "plates-filter-toggle", showFilters && "active")}
+            onClick={() => setShowFilters((prev) => !prev)}
+            aria-expanded={showFilters}
+          >
+            <SlidersHorizontal size={14} /> {showFilters ? "Hide filters" : "Show filters"}
+          </button>
         </div>
       </header>
 
-      {equipped && (
+      {equipped ? (
         <article className="plates-current">
-          <span className={cls("plates-current-name", plateClass(equipped.id))}>{app.me.user.displayName}</span>
+          <span className={cls("plates-current-name", "plate-name", plateClass(equipped.id))}>
+            <PlateArt id={equipped.id} />
+            <span className="plate-label">{app.me.user.displayName}</span>
+          </span>
           <div>
             <strong>{equipped.name}</strong>
             <span>Equipped right now</span>
@@ -122,36 +199,78 @@ export function NameplatesView() {
             {busy === "clear" ? <Loader2 size={13} className="spin" /> : <X size={13} />} Remove
           </button>
         </article>
-      )}
+      ) : null}
 
-      <div className="plates-toolbar">
-        <label className="plates-search">
-          <Search size={15} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search nameplates" aria-label="Search nameplates" />
-        </label>
-        <div className="plates-filters" role="tablist" aria-label="Nameplate access">
-          {FILTERS.map((entry) => (
+      {showFilters ? (
+        <div className="plates-filter-panel">
+          <label className="plates-search">
+            <Search size={15} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search nameplates"
+              aria-label="Search nameplates"
+            />
+          </label>
+          <div className="plates-filter-group">
+            <span className="plates-filter-label">Access</span>
+            <div className="plates-filters" role="tablist" aria-label="Nameplate access">
+              {TIERS.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tier === entry.id}
+                  className={cls(tier === entry.id && "active")}
+                  onClick={() => setTier(entry.id)}
+                >
+                  {entry.id === "favorites" && <Heart size={12} />} {entry.label}
+                  {entry.id === "favorites" && favorites > 0 ? <em>{favorites}</em> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="plates-filter-group">
+            <span className="plates-filter-label">Rarity</span>
+            <div className="plates-filters" role="tablist" aria-label="Nameplate rarity">
+              {RARITIES.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={rarity === entry.id}
+                  className={cls(rarity === entry.id && "active")}
+                  onClick={() => setRarity(entry.id)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            className={cls("plates-toggle-pill", limitedOnly && "active")}
+            onClick={() => setLimitedOnly((prev) => !prev)}
+            aria-pressed={limitedOnly}
+          >
+            <Timer size={13} /> Limited drops only
+          </button>
+          {(query || tier !== "all" || rarity !== "any" || limitedOnly) && (
             <button
-              key={entry.id}
               type="button"
-              role="tab"
-              aria-selected={filter === entry.id}
-              className={cls(filter === entry.id && "active")}
-              onClick={() => setFilter(entry.id)}
+              className="ghost-btn small"
+              onClick={() => {
+                setQuery("");
+                setTier("all");
+                setRarity("any");
+                setLimitedOnly(false);
+              }}
             >
-              {entry.label}
+              Reset
             </button>
-          ))}
+          )}
         </div>
-        <label className="plates-sort">
-          Sort by
-          <select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}>
-            <option value="popular">Popular</option>
-            <option value="newest">Newest</option>
-            <option value="rarity">Rarity</option>
-          </select>
-        </label>
-      </div>
+      ) : null}
 
       {loading ? (
         <div className="plates-loading">
@@ -168,18 +287,58 @@ export function NameplatesView() {
       ) : visible.length === 0 ? (
         <div className="plates-empty">
           <Palette size={24} />
-          <strong>No nameplates match that filter</strong>
-          <span>Try another search or category.</span>
+          <strong>No nameplates match those filters</strong>
+          <span>Try another search, access tier or rarity.</span>
         </div>
       ) : (
-        <div className="plates-grid">
+        <div className="np-grid">
           {visible.map((plate) => {
-            const locked = !plate.unlocked;
+            const left = daysLeft(plate.endsAt);
             const working = busy === plate.id;
+            const saving = busy === `fav-${plate.id}`;
             return (
-              <article key={plate.id} className={cls("plate-card", plate.equipped && "is-equipped", locked && "is-locked")}>
-                <div className={cls("plate-preview", plateClass(plate.id))} aria-hidden="true">
-                  <span className="plate-preview-avatar">
+              <article
+                key={plate.id}
+                className={cls(
+                  "np-card",
+                  plate.equipped && "is-equipped",
+                  !plate.equippable && "is-locked",
+                  `rarity-${plate.rarity}`,
+                )}
+              >
+                <div className="np-stage">
+                  {plate.limited ? (
+                    <span className={cls("np-flag", left === 0 && "np-flag-ended")}>
+                      <Timer size={10} /> {left === 0 ? "Drop ended" : `${left} ${left === 1 ? "day" : "days"} left`}
+                    </span>
+                  ) : plate.isNew ? (
+                    <span className="np-flag np-flag-new">New</span>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    className={cls("np-heart", plate.favorite && "active")}
+                    aria-pressed={plate.favorite}
+                    aria-label={plate.favorite ? `Remove ${plate.name} from favourites` : `Save ${plate.name} to favourites`}
+                    onClick={() => void unfavorite(plate)}
+                    disabled={saving}
+                  >
+                    {saving ? <Loader2 size={14} className="spin" /> : <Heart size={14} fill={plate.favorite ? "currentColor" : "none"} />}
+                  </button>
+
+                  <div className="np-context" aria-hidden="true">
+                    <span className="np-ghost">
+                      <i className="np-ghost-avatar" />
+                      <i className="np-ghost-line" />
+                    </span>
+                    <span className="np-ghost np-ghost-out">
+                      <i className="np-ghost-avatar" />
+                      <i className="np-ghost-line" />
+                    </span>
+                  </div>
+
+                  <div className={cls("np-pill", plateClass(plate.id))}>
+                    <PlateArt id={plate.id} />
                     <Avatar
                       user={{
                         id: app.me.user.id,
@@ -191,44 +350,46 @@ export function NameplatesView() {
                       }}
                       size={26}
                     />
-                  </span>
-                  <span className="plate-preview-name">{app.me.user.displayName}</span>
+                    <span className="np-pill-name">{app.me.user.displayName}</span>
+                  </div>
                 </div>
 
-                <header className="plate-card-head">
+                <div className="np-body">
                   <h3>{plate.name}</h3>
-                  <span className={cls("plate-rarity", `rarity-${plate.rarity}`)}>{plate.rarity}</span>
-                </header>
-                <p>{plate.description}</p>
-
-                <footer className="plate-card-foot">
-                  <span className="plate-access">
+                  <div className="np-meta">
                     {plate.unlock === "plus" ? (
-                      <>
-                        <Sparkles size={12} /> ZUNO PLUS
-                      </>
+                      <span className="np-access np-access-plus">
+                        <Sparkles size={11} /> ZUNO PLUS
+                      </span>
                     ) : plate.unlock === "owner" ? (
-                      <>
-                        <Crown size={12} /> Owner only
-                      </>
+                      <span className="np-access np-access-owner">
+                        <Crown size={11} /> Owner
+                      </span>
                     ) : (
-                      "Free"
+                      <span className="np-access">Free</span>
                     )}
-                  </span>
+                    <span className={cls("np-rarity", `rarity-${plate.rarity}`)}>{plate.rarity}</span>
+                    {plate.equippedBy > 0 ? <span className="np-worn">{plate.equippedBy} wearing</span> : null}
+                  </div>
+                  <p>{plate.description}</p>
+                </div>
+
+                <div className="np-foot">
                   {plate.equipped ? (
-                    <span className="plate-equipped">
+                    <span className="np-equipped">
                       <Check size={13} /> Equipped
                     </span>
-                  ) : locked ? (
-                    <button type="button" className="ghost-btn small" disabled title={plate.unlockHint}>
-                      <Lock size={12} /> Locked
+                  ) : plate.equippable ? (
+                    <button type="button" className="primary-btn small" onClick={() => void equip(plate)} disabled={busy !== null}>
+                      {working ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
+                      {plate.unlocked ? "Equip" : "Unlock & equip"}
                     </button>
                   ) : (
-                    <button type="button" className="primary-btn small" onClick={() => void act(plate)} disabled={busy !== null}>
-                      {working ? <Loader2 size={12} className="spin" /> : <Check size={12} />} Equip
+                    <button type="button" className="ghost-btn small" disabled title={plate.unlockHint}>
+                      <Lock size={12} /> {plate.limited && left === 0 ? "Drop ended" : "Locked"}
                     </button>
                   )}
-                </footer>
+                </div>
               </article>
             );
           })}

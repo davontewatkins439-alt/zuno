@@ -18,6 +18,7 @@ import { useApp } from "../../state";
 import { api, uploadFile } from "../../lib/api";
 import { cls, formatShort, has, P, PLUS_DECORATIONS, PLUS_THEMES } from "../../lib/utils";
 import { plateClass } from "../../lib/nameplates";
+import { PlateArt } from "../PlateArt";
 import { Avatar, BadgeRow, BadgeTile, IconButton, Modal, Verified } from "../ui";
 import { VoiceSettings } from "./VoiceSettings";
 
@@ -108,7 +109,11 @@ function ProfileSettings() {
           />
           <div className="profile-preview-copy">
             <strong>
-              <span className={cls("plate-name", plateClass(user.nameplate))}>{displayName}</span> {user.isOwner && <Verified />}
+              <span className={cls("plate-name", plateClass(user.nameplate))}>
+                <PlateArt id={user.nameplate} />
+                <span className="plate-label">{displayName}</span>
+              </span>{" "}
+              {user.isOwner && <Verified />}
             </strong>
             <span>{customStatus || `@${user.username}`}</span>
             <BadgeRow badges={user.badges} max={4} />
@@ -525,7 +530,10 @@ export function ProfileModal() {
         <Avatar user={user} size={82} showStatus decoration={user.plusDecoration} />
         <div className="profile-identity">
           <h2>
-            <span className={cls("plate-name", plateClass(user.nameplate))}>{user.displayName}</span>
+            <span className={cls("plate-name", plateClass(user.nameplate))}>
+              <PlateArt id={user.nameplate} />
+              <span className="plate-label">{user.displayName}</span>
+            </span>
             {user.isOwner && <Verified />}
             {user.badges.some((b) => b.slug === "verified") && !user.isOwner && <Verified />}
           </h2>

@@ -14,6 +14,7 @@ import type { Message } from "../lib/types";
 import { useApp } from "../state";
 import { cls, formatTime, has, P, QUICK_EMOJI, bytes } from "../lib/utils";
 import { plateClass } from "../lib/nameplates";
+import { PlateArt } from "./PlateArt";
 import { Avatar, BadgeRow, IconButton, StickerArt, Verified } from "./ui";
 import { Markdown } from "./Markdown";
 
@@ -125,7 +126,8 @@ export function MessageItem({ message, grouped, roleColor, highlighted }: Props)
               style={roleColor ? { color: roleColor } : undefined}
               onClick={() => void app.openProfile(message.author.id)}
             >
-              {message.author.displayName}
+              <PlateArt id={message.author.nameplate} />
+              <span className="plate-label">{message.author.displayName}</span>
             </button>
             {message.author.isOwner && <Verified />}
             <BadgeRow badges={message.author.badges} max={3} compact />
