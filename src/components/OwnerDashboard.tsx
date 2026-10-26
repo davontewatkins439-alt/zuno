@@ -684,6 +684,7 @@ function ApplicationsTab() {
       experience: string | null;
       status: string;
       createdAt: number;
+      userId: string;
       username: string;
       displayName: string;
       platformRole: string;
@@ -758,7 +759,11 @@ function ApplicationsTab() {
             >
               Deny
             </button>
-            <button type="button" className="ghost-btn small" onClick={() => void app.openProfile(application.username)}>
+            <button
+              type="button"
+              className="ghost-btn small"
+              onClick={() => void app.openProfile(application.userId)}
+            >
               View applicant
             </button>
           </div>
