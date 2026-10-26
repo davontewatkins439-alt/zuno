@@ -1,0 +1,14 @@
+{
+  "identifier": "desktop",
+  "description": "Window and notification permissions for the ZUNO desktop shell.",
+  "windows": ["main"],
+  "remote": {
+    "urls": [
+      "https://zunoo.freebuff.page",
+      "https://zunoo.freebuff.page/*",
+      "http://localhost:3000",
+      "http://localhost:3000/*"
+    ]
+  },
+  "permissions": ["core:default", "notification:default"]
+}

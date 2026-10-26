@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-worker/
+src-tauri/target/
+src-tauri/gen/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.screenshots/
+/freebuff-sites-build/
+.tmp-secrets/
+artifacts/

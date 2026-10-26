@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="zunoBg" x1="120" y1="40" x2="920" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0c1a2e" />
+      <stop offset="0.55" stop-color="#050a14" />
+      <stop offset="1" stop-color="#0a1024" />
+    </linearGradient>
+    <radialGradient id="zunoGlow" cx="0.5" cy="0.24" r="0.78">
+      <stop offset="0" stop-color="#2f7cff" stop-opacity="0.42" />
+      <stop offset="0.55" stop-color="#2f7cff" stop-opacity="0.08" />
+      <stop offset="1" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="zunoMark" x1="120" y1="96" x2="904" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5fe3ff" />
+      <stop offset="0.55" stop-color="#2f7cff" />
+      <stop offset="1" stop-color="#7c4dff" />
+    </linearGradient>
+    <linearGradient id="zunoZ" x1="360" y1="320" x2="700" y2="740" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#c9f6ff" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#zunoBg)" />
+  <rect width="1024" height="1024" rx="224" fill="url(#zunoGlow)" />
+  <g transform="translate(128 128) scale(12)">
+    <path d="M32 2.5 55.6 16v24c0 10.7-9.8 17.9-23.6 21.5C18.2 57.9 8.4 50.7 8.4 40V16L32 2.5Z" fill="url(#zunoMark)" />
+    <path d="M32 6.8 51.7 18.1v21.4c0 8.6-7.9 14.9-19.7 18-11.8-3.1-19.7-9.4-19.7-18V18.1L32 6.8Z" fill="#070c1a" fill-opacity="0.86" />
+    <path d="M22 21h21.5l-13 12.2h11.8L42.4 43H20.2l13.1-12.3H22V21Z" fill="url(#zunoZ)" />
+    <circle cx="46.5" cy="18.5" r="3.6" fill="#5fe3ff" />
+  </g>
+</svg>
