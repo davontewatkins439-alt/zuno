@@ -303,6 +303,7 @@ export function NameplatesView() {
                   "np-card",
                   plate.equipped && "is-equipped",
                   !plate.equippable && "is-locked",
+                  plate.unlock === "owner" && "is-owner",
                   `rarity-${plate.rarity}`,
                 )}
               >
@@ -310,6 +311,10 @@ export function NameplatesView() {
                   {plate.limited ? (
                     <span className={cls("np-flag", left === 0 && "np-flag-ended")}>
                       <Timer size={10} /> {left === 0 ? "Drop ended" : `${left} ${left === 1 ? "day" : "days"} left`}
+                    </span>
+                  ) : plate.unlock === "owner" ? (
+                    <span className="np-flag np-flag-owner">
+                      <Crown size={10} /> Owner · 1 of 1
                     </span>
                   ) : plate.isNew ? (
                     <span className="np-flag np-flag-new">New</span>
@@ -350,7 +355,12 @@ export function NameplatesView() {
                       }}
                       size={26}
                     />
-                    <span className="np-pill-name">{app.me.user.displayName}</span>
+                    <span className="np-pill-name">{plate.unlock === "owner" ? "zuno" : app.me.user.displayName}</span>
+                    {plate.unlock === "owner" ? (
+                      <span className="np-pill-crown" aria-hidden="true">
+                        <Crown size={12} />
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 

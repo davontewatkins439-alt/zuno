@@ -394,7 +394,7 @@ async function ensureQuestsOnce(env: Env): Promise<void> {
 /* ------------------------------------------------------------------ */
 
 async function ensureNameplatesOnce(env: Env): Promise<void> {
-  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'nameplates_seed_v2'")
+  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'nameplates_seed_v3'")
     .first<{ value: string }>()
     .catch(() => null);
   if (done) return;
@@ -445,6 +445,33 @@ async function ensureNameplatesOnce(env: Env): Promise<void> {
   }
   await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
   await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v2', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+
+  // Owner tier: never unlockable through any rule but ownership. Kept last in
+  // the catalogue so they sit at the top of the shop.
+  const ownerPlates: [string, string, string, number][] = [
+    ["zuno-1of1", "ZUNO 1 OF 1", "One account. One copy. The hardest plate on the platform.", 99],
+    ["onyx-crown", "Onyx Crown", "Matte black crownwork, struck in gold.", 98],
+    ["obsidian-halo", "Obsidian Halo", "A cold ring of light over pure obsidian.", 97],
+    ["chrome-liquid", "Chrome Liquid", "Liquid chrome poured across the pill.", 96],
+    ["glitch-sovereign", "Glitch Sovereign", "A signature that refuses to render cleanly.", 95],
+    ["noir-sigil", "Noir Sigil", "ZUNO struck in gold on black.", 94],
+    ["the-founder", "The Founder", "The mascot plate, reserved for the account that built ZUNO.", 93],
+  ];
+  for (const [id, name, description, sort] of ownerPlates) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort, released_at, available_until) VALUES (?, ?, ?, 'legendary', 'owner', 'shimmer', 1, ?, ?, NULL) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, sort, t)
+      .run();
+  }
+  await env.DB.prepare(
+    "UPDATE nameplates SET description = 'The founding plate, reserved for the ZUNO owner account.' WHERE id = 'origin'",
+  ).run();
+  // The owner account lands on the top plate unless they already chose one.
+  await env.DB.prepare(
+    "UPDATE users SET nameplate = 'zuno-1of1' WHERE is_owner = 1 AND (nameplate IS NULL OR nameplate = '')",
+  ).run();
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v3', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
 }
 
 /* ------------------------------------------------------------------ */

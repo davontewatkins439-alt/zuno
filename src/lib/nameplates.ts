@@ -24,7 +24,13 @@ export interface PlateArtSpec {
     | "prism"
     | "carbon"
     | "vault"
-    | "glow";
+    | "glow"
+    | "figure"
+    | "crown"
+    | "halo"
+    | "chrome"
+    | "glitch"
+    | "sigil";
 }
 
 export const PLATE_ART: Record<string, PlateArtSpec> = {
@@ -42,6 +48,15 @@ export const PLATE_ART: Record<string, PlateArtSpec> = {
   "carbon-bloom": { a: "#3f4a5a", b: "#7ef0c4", glow: "rgba(126,240,196,0.4)", scene: "carbon" },
   "ice-vault": { a: "#b8f1ff", b: "#2f7cff", glow: "rgba(184,241,255,0.45)", scene: "vault" },
   afterglow: { a: "#ff7ab8", b: "#ffcf6b", glow: "rgba(255,122,184,0.5)", scene: "glow" },
+  // Owner-only tier. Matte black, gold and chrome — built to read as the top
+  // of the ladder and never handed out by any unlock rule but ownership.
+  "zuno-1of1": { a: "#08090f", b: "#ffd76e", glow: "rgba(255,199,60,0.55)", scene: "figure" },
+  "onyx-crown": { a: "#05060b", b: "#f5c542", glow: "rgba(245,197,66,0.5)", scene: "crown" },
+  "obsidian-halo": { a: "#05070d", b: "#7ef0ff", glow: "rgba(126,240,255,0.45)", scene: "halo" },
+  "chrome-liquid": { a: "#0b0d14", b: "#dbe6f7", glow: "rgba(190,215,255,0.45)", scene: "chrome" },
+  "glitch-sovereign": { a: "#080a12", b: "#ff4d8d", glow: "rgba(255,77,141,0.5)", scene: "glitch" },
+  "noir-sigil": { a: "#04050a", b: "#ffd76e", glow: "rgba(255,215,110,0.4)", scene: "sigil" },
+  "the-founder": { a: "#070910", b: "#5fe3ff", glow: "rgba(95,227,255,0.45)", scene: "figure" },
 };
 
 export const NAMEPLATE_IDS = Object.keys(PLATE_ART);

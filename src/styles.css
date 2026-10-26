@@ -4016,3 +4016,66 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
   .plates-sortby { flex: 1; }
   .plates-sortby select { width: 100%; }
 }
+
+/* ------------------------------ owner tier ------------------------------ */
+
+.np-zuno-1of1, .np-onyx-crown, .np-obsidian-halo, .np-chrome-liquid,
+.np-glitch-sovereign, .np-noir-sigil, .np-the-founder {
+  border-color: rgba(255, 215, 110, 0.42);
+  box-shadow: 0 0 18px -6px rgba(255, 199, 60, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.np-zuno-1of1::after, .np-onyx-crown::after, .np-obsidian-halo::after,
+.np-chrome-liquid::after, .np-glitch-sovereign::after, .np-noir-sigil::after,
+.np-the-founder::after {
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 215, 110, 0.34) 46%, transparent 60%);
+  animation-duration: 5.5s;
+}
+
+.np-card.is-owner {
+  border-color: rgba(255, 215, 110, 0.32);
+  background: linear-gradient(168deg, rgba(23, 20, 12, 0.96), rgba(6, 7, 12, 0.98));
+}
+.np-card.is-owner:hover {
+  border-color: rgba(255, 215, 110, 0.55);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.62), 0 0 30px -14px rgba(255, 199, 60, 0.75);
+}
+.np-card.is-owner .np-rarity { color: #ffd76e; }
+.np-card.is-owner .np-stage {
+  background:
+    radial-gradient(120% 90% at 50% 120%, rgba(255, 199, 60, 0.16), transparent 68%),
+    rgba(5, 5, 9, 0.9);
+}
+
+.np-flag-owner {
+  color: #1a1200;
+  border-color: transparent;
+  background: linear-gradient(135deg, #ffe9ab, #f0b429);
+  box-shadow: 0 0 16px -6px rgba(255, 199, 60, 0.9);
+}
+
+.np-pill-crown {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  color: #ffd76e;
+  padding-right: 6px;
+  flex-shrink: 0;
+}
+
+@keyframes np-drift {
+  from { transform: scale(1.02) translateX(-1%); }
+  to { transform: scale(1.06) translateX(1%); }
+}
+
+.np-card.is-owner .plate-art {
+  animation: np-drift 18s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .np-card.is-owner .plate-art { animation: none; }
+  .np-zuno-1of1::after, .np-onyx-crown::after, .np-obsidian-halo::after,
+  .np-chrome-liquid::after, .np-glitch-sovereign::after, .np-noir-sigil::after,
+  .np-the-founder::after { animation: none; }
+}

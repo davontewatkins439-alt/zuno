@@ -334,6 +334,151 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
           <circle cx="252" cy="18" r="12" fill="#ffffff" opacity="0.18" />
         </g>
       );
+    /* ---------------------------- owner tier ---------------------------- */
+    case "figure":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#04050a" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.22" />
+          <path d="M70 60 Q 160 26 250 60 Z" fill="#090b12" />
+          <path d="M70 60 Q 160 26 250 60" stroke={b} strokeWidth="1" fill="none" opacity="0.4" />
+          <g fill="#0c1018" stroke={b} strokeOpacity="0.32">
+            <rect x="112" y="18" width="14" height="22" rx="6" />
+            <rect x="194" y="18" width="14" height="22" rx="6" />
+          </g>
+          <rect x="130" y="6" width="60" height="48" rx="19" fill="#0a0d14" stroke={b} strokeOpacity="0.5" />
+          <rect x="141" y="19" width="38" height="9" rx="4.5" fill={`url(#${gid})`} />
+          <rect x="144" y="21" width="11" height="3" rx="1.5" fill="#ffffff" opacity="0.5" />
+          <path d="M150 39 H170" stroke={b} strokeWidth="1.2" opacity="0.5" />
+          <g fill={b} opacity="0.7">
+            <rect x="88" y="16" width="2" height="2" rx="1" />
+            <rect x="238" y="24" width="2" height="2" rx="1" />
+            <rect x="64" y="34" width="1.6" height="1.6" rx="0.8" />
+          </g>
+          <text
+            x="256"
+            y="50"
+            fill={b}
+            opacity="0.75"
+            fontSize="7"
+            fontWeight="800"
+            letterSpacing="2.4"
+            fontFamily="Inter, system-ui, sans-serif"
+          >
+            ZUNO
+          </text>
+        </g>
+      );
+    case "crown":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#05060b" />
+          <rect width="320" height="60" fill={`url(#${sid})`} opacity="0.9" />
+          <path d="M122 38 L114 10 L140 26 L160 6 L180 26 L206 10 L198 38 Z" fill={`url(#${gid})`} stroke={b} strokeOpacity="0.65" />
+          <rect x="122" y="40" width="76" height="7" rx="3" fill={b} opacity="0.85" />
+          <g fill="#fff6d8" opacity="0.85">
+            <circle cx="160" cy="19" r="2.2" />
+            <circle cx="132" cy="24" r="1.5" />
+            <circle cx="188" cy="24" r="1.5" />
+            <circle cx="142" cy="43.5" r="1.4" />
+            <circle cx="178" cy="43.5" r="1.4" />
+          </g>
+          <g stroke={b} strokeWidth="0.9" opacity="0.35">
+            <path d="M0 30 H96" />
+            <path d="M224 30 H320" />
+          </g>
+        </g>
+      );
+    case "halo":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#04060c" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.28" />
+          <g fill="none" stroke={b}>
+            <ellipse cx="160" cy="30" rx="34" ry="30" opacity="0.75" strokeWidth="1.2" />
+            <ellipse cx="160" cy="30" rx="52" ry="46" opacity="0.4" strokeWidth="0.9" />
+            <ellipse cx="160" cy="30" rx="74" ry="64" opacity="0.22" strokeWidth="0.8" />
+          </g>
+          <ellipse cx="160" cy="30" rx="18" ry="15" fill={b} opacity="0.18" />
+          <ellipse cx="160" cy="30" rx="8" ry="7" fill="#eafcff" opacity="0.7" />
+          <g fill={b} opacity="0.55">
+            {[
+              [52, 14],
+              [78, 44],
+              [244, 20],
+              [268, 40],
+              [96, 30],
+              [226, 48],
+            ].map(([x, y], i) => (
+              <rect key={i} x={x} y={y} width="2" height="2" rx="1" />
+            ))}
+          </g>
+        </g>
+      );
+    case "chrome":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#080a10" />
+          <g>
+            <path d="M-10 52 C 60 8, 120 58, 180 22 S 280 6, 330 30 L330 60 L-10 60 Z" fill={`url(#${gid})`} opacity="0.7" />
+            <path d="M-10 48 C 60 12, 120 54, 180 26 S 280 12, 330 34" stroke="#ffffff" strokeWidth="1.4" fill="none" opacity="0.55" />
+            <path d="M-10 36 C 80 0, 130 44, 200 14 S 290 0, 330 18" stroke="#ffffff" strokeWidth="1" fill="none" opacity="0.3" />
+          </g>
+          <g stroke="#dbe6f7" strokeWidth="0.8" opacity="0.22">
+            <path d="M40 0 V60" />
+            <path d="M120 0 V60" />
+            <path d="M200 0 V60" />
+            <path d="M280 0 V60" />
+          </g>
+        </g>
+      );
+    case "glitch":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#06080f" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.2" />
+          <g opacity="0.85">
+            <rect x="0" y="10" width="132" height="7" fill={b} opacity="0.55" />
+            <rect x="118" y="10" width="60" height="7" fill="#5fe3ff" opacity="0.35" />
+            <rect x="176" y="22" width="144" height="5" fill="#5fe3ff" opacity="0.4" />
+            <rect x="186" y="34" width="86" height="7" fill={b} opacity="0.5" />
+            <rect x="40" y="44" width="112" height="4" fill="#5fe3ff" opacity="0.3" />
+          </g>
+          <g stroke="#ffffff" strokeWidth="0.6" opacity="0.12">
+            {[6, 18, 30, 42, 54].map((y) => (
+              <path key={y} d={`M0 ${y} H320`} />
+            ))}
+          </g>
+          <rect x="272" y="6" width="10" height="10" fill={b} opacity="0.5" />
+        </g>
+      );
+    case "sigil":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#030409" />
+          <g stroke={b} strokeOpacity="0.35" fill="none">
+            <rect x="72" y="12" width="176" height="36" rx="6" />
+            <path d="M72 30 H60" />
+            <path d="M248 30 H260" />
+          </g>
+          <text
+            x="160"
+            y="38"
+            textAnchor="middle"
+            fill={b}
+            fontSize="21"
+            fontWeight="800"
+            letterSpacing="7"
+            fontFamily="Inter, system-ui, sans-serif"
+          >
+            ZUNO
+          </text>
+          <g fill={b} opacity="0.6">
+            <rect x="86" y="26" width="2" height="2" rx="1" />
+            <rect x="232" y="32" width="2" height="2" rx="1" />
+          </g>
+        </g>
+      );
     default:
       return <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.5" />;
   }
