@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       build_macos:
-        description: "Also build the macOS installers"
+        description: "Also build the macOS installer"
         type: boolean
-        default: false
+        default: true
   push:
     tags:
       - "desktop-v*"
@@ -37,28 +37,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # NSIS produces ZUNO_1.0.0_x64-setup.exe. Add "msi" to the bundles list
+      # NSIS produces ZUNO_<version>_x64-setup.exe. Add "msi" to the bundles list
       # ("--bundles nsis,msi") if you also want the WiX .msi installer.
-      # tauri-action also attaches the installer to a GitHub Release, which is the
-      # file the website's download button links to.
       - name: Build ZUNO for Windows
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: desktop-v__VERSION__
-          releaseName: "ZUNO __VERSION__ for Windows"
-          releaseBody: |
-            ## ZUNO __VERSION__ for Windows
-
-            Download the **x64 setup .exe** below and run it to install ZUNO.
-
-            - Windows 10 or 11, 64-bit
-            - Signs in to https://zunoo.freebuff.page — same account, same servers, same DMs
-            - Unsigned build: Windows SmartScreen may warn, choose **More info → Run anyway**
-          releaseDraft: false
-          prerelease: false
-          includeUpdaterJson: false
           args: "--bundles nsis"
 
       - name: Upload Windows installers
@@ -115,3 +100,44 @@ jobs:
           name: ZUNO-macos-installers
           if-no-files-found: error
           path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+
+  # One release, both platforms, so Windows and macOS never race for the same tag.
+  publish:
+    name: Publish release
+    needs: [windows, macos]
+    if: always() && needs.windows.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ZUNO-*-installers
+          path: release-assets
+          merge-multiple: true
+
+      - name: Show what will be published
+        run: ls -lh release-assets
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="desktop-v$VERSION"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "ZUNO $VERSION" \
+              --notes "ZUNO desktop installers.
+
+          - Windows 10/11 64-bit: ZUNO_${VERSION}_x64-setup.exe
+          - macOS 10.15+ (Intel and Apple Silicon): Universal .dmg
+
+          Unsigned builds — Windows SmartScreen and macOS Gatekeeper may warn.
+
+          The desktop app is a native shell around https://zunoo.freebuff.page, so it uses the same account, servers, DMs and owner console as the website."
+          fi
+          gh release upload "$TAG" release-assets/* --clobber
+          gh release view "$TAG" --json assets --jq '.assets[] | .name + " (" + (.size|tostring) + " bytes)"'
