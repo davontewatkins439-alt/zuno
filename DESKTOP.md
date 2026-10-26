@@ -26,10 +26,10 @@ src-tauri/
 | Desktop notifications (native command + web fallback) | Implemented |
 | Production URL / single database | Configured |
 | Rust crate type-checks for Windows (`x86_64-pc-windows-msvc`) | Verified |
-| Windows `.exe` installer | **Not built yet** — needs Windows (or CI) |
-| Website download button + release lookup | Implemented; shows “coming soon” until a release exists |
+| Windows `.exe` installer | **Built** — v1.0.0 in the GitHub release |
+| macOS universal `.dmg` | **Built** — v1.0.0 in the same release |
+| Website download buttons + release lookup | Live for Windows and macOS |
 | Windows `.msi` installer | Optional; add `msi` to the bundle list |
-| macOS `.dmg` / `.app` | **Not built** — needs macOS (or CI) |
 
 Installers cannot be produced in this Linux workspace: Tauri builds per OS, and
 the Windows installer needs the MSVC linker, `rc.exe` and NSIS, which only exist
@@ -99,6 +99,19 @@ To switch the website button on:
 Optional variables: `GITHUB_TOKEN` (only for a private repository or higher API
 rate limits) and `WINDOWS_INSTALLER_URL` + `WINDOWS_INSTALLER_VERSION` if you ever
 host the installer outside GitHub. Never commit any of them.
+
+### Current release
+
+| Platform | File | Size |
+| --- | --- | --- |
+| Windows 10/11 x64 | `ZUNO_1.0.0_x64-setup.exe` | ~2.1 MB |
+| macOS 10.15+ (universal) | `ZUNO_1.0.0_universal.dmg` | ~5.6 MB |
+
+Both are attached to `desktop-v1.0.0` and linked from the sign-in page. The
+installers are **unsigned**: Windows SmartScreen warns (More info → Run anyway),
+and macOS Gatekeeper blocks the first launch — right-click the app → **Open**, or
+run `xattr -dr com.apple.quarantine /Applications/ZUNO.app`. Signing needs a
+Windows code-signing certificate and an Apple Developer ID, both documented below.
 
 ### Shipping an update later
 
