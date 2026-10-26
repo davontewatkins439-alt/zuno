@@ -107,6 +107,42 @@ async function fromGitHub(env: Env, repo: string): Promise<WindowsDownload> {
   };
 }
 
+/**
+ * The GitHub REST API is rate limited per IP, and Workers share egress IPs, so
+ * a 403 is common. GitHub's public redirects and release downloads are not rate
+ * limited, so we fall back to them: /releases/latest points at the tag, and the
+ * installer URL is derived from the tag and confirmed with a HEAD request.
+ */
+async function fromPublicUrls(repo: string): Promise<WindowsDownload | null> {
+  const latest = await fetch(`https://github.com/${repo}/releases/latest`, {
+    redirect: "manual",
+    headers: { "user-agent": "ZUNO-site" },
+  });
+  const location = latest.headers.get("location") ?? "";
+  const match = location.match(/\/releases\/tag\/(.+)$/);
+  if (!match) return null;
+  const tag = decodeURIComponent(match[1]);
+  const version = cleanVersion(tag);
+
+  for (const name of [`ZUNO_${version}_x64-setup.exe`, `ZUNO_${version}_x64_en-US.msi`, `ZUNO_${version}_x64.msi`]) {
+    const url = `https://github.com/${repo}/releases/download/${tag}/${name}`;
+    const head = await fetch(url, { method: "HEAD", redirect: "manual", headers: { "user-agent": "ZUNO-site" } });
+    if ([200, 301, 302, 307].includes(head.status)) {
+      const size = Number(head.headers.get("content-length") ?? 0);
+      return {
+        available: true,
+        version,
+        url,
+        filename: name,
+        size: Number.isFinite(size) && size > 0 ? size : null,
+        publishedAt: null,
+        minOs: MIN_OS,
+      };
+    }
+  }
+  return null;
+}
+
 export async function windowsDownload(env: Env): Promise<WindowsDownload> {
   // A direct override wins, for hosting the installer somewhere other than GitHub.
   if (env.WINDOWS_INSTALLER_URL) {
@@ -152,6 +188,15 @@ export async function windowsDownload(env: Env): Promise<WindowsDownload> {
       minOs: MIN_OS,
       reason: "GitHub could not be reached.",
     };
+  }
+
+  if (!value.available) {
+    try {
+      const fallback = await fromPublicUrls(repo);
+      if (fallback) value = fallback;
+    } catch {
+      /* keep the API verdict if the public pages are unreachable too */
+    }
   }
   cache = { key, at: Date.now(), value };
   return value;
