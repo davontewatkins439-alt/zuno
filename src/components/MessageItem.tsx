@@ -13,6 +13,7 @@ import {
 import type { Message } from "../lib/types";
 import { useApp } from "../state";
 import { cls, formatTime, has, P, QUICK_EMOJI, bytes } from "../lib/utils";
+import { plateClass } from "../lib/nameplates";
 import { Avatar, BadgeRow, IconButton, StickerArt, Verified } from "./ui";
 import { Markdown } from "./Markdown";
 
@@ -118,7 +119,12 @@ export function MessageItem({ message, grouped, roleColor, highlighted }: Props)
 
         {!grouped && (
           <div className="message-head">
-            <button type="button" className="message-author" style={roleColor ? { color: roleColor } : undefined} onClick={() => void app.openProfile(message.author.id)}>
+            <button
+              type="button"
+              className={cls("message-author", "plate-name", plateClass(message.author.nameplate))}
+              style={roleColor ? { color: roleColor } : undefined}
+              onClick={() => void app.openProfile(message.author.id)}
+            >
               {message.author.displayName}
             </button>
             {message.author.isOwner && <Verified />}

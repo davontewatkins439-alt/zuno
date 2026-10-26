@@ -12,6 +12,7 @@ import {
   Lock,
   LogOut,
   MessageSquare,
+  Palette,
   Mic,
   MicOff,
   Plus,
@@ -107,6 +108,13 @@ function HomeSidebar() {
           </button>
           <button type="button" className={cls(route.name === "discover" && "active")} onClick={() => navigate("/discover")}>
             <Compass size={17} /> <span>Discover</span>
+          </button>
+          <button
+            type="button"
+            className={cls(route.name === "nameplates" && "active")}
+            onClick={() => navigate("/nameplates")}
+          >
+            <Palette size={17} /> <span>Nameplates</span>
           </button>
           <button
             type="button"

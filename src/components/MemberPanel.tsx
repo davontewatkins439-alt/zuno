@@ -3,6 +3,7 @@ import { Crown, MicOff, Monitor, Search, X } from "lucide-react";
 import { useApp } from "../state";
 import type { ServerMember } from "../lib/types";
 import { cls } from "../lib/utils";
+import { plateClass } from "../lib/nameplates";
 import { Avatar, BadgeRow, IconButton, Verified } from "./ui";
 
 function roleColorFor(member: ServerMember, roles: { id: string; color: string | null; position: number }[]) {
@@ -86,7 +87,7 @@ export function MemberPanel({ onClose }: { onClose: () => void }) {
                     decoration={member.plusDecoration}
                   />
                   <span className="member-copy">
-                    <span className="member-name" style={color ? { color } : undefined}>
+                    <span className={cls("member-name", "plate-name", plateClass(member.nameplate))} style={color ? { color } : undefined}>
                       {member.nickname || member.displayName}
                       {member.isOwner && (
                         <span className="crown" title="ZUNO Owner">

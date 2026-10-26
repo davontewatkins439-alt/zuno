@@ -3,6 +3,7 @@ import { Headphones, LogOut, Mic, MicOff, Monitor, PhoneOff, Settings, VolumeX }
 import { useApp } from "../state";
 import { api } from "../lib/api";
 import { cls, statusColor, statusLabel } from "../lib/utils";
+import { plateClass } from "../lib/nameplates";
 import { Avatar, IconButton, StatusDot, Verified } from "./ui";
 
 const STATUS_OPTIONS: { value: "online" | "idle" | "dnd" | "invisible"; label: string; hint: string }[] = [
@@ -32,7 +33,7 @@ export function AccountPanel() {
       <button type="button" className="account-identity" onClick={() => void openProfile(user.id)}>
         <Avatar user={user} size={36} showStatus decoration={user.plusDecoration} />
         <span className="account-meta">
-          <span className="account-name">
+          <span className={cls("account-name", "plate-name", plateClass(user.nameplate))}>
             {user.displayName}
             {(user.isOwner || user.badges.some((b) => b.slug === "verified")) && <Verified />}
           </span>

@@ -64,6 +64,19 @@ export interface QuestBoardEntry {
   badges: Badge[];
 }
 
+export interface Nameplate {
+  id: string;
+  name: string;
+  description: string | null;
+  rarity: string;
+  animation: string | null;
+  unlock: string;
+  unlockHint: string;
+  unlocked: boolean;
+  equipped: boolean;
+  equippedBy: number;
+}
+
 export interface Badge {
   slug: string;
   name: string;
@@ -90,6 +103,7 @@ export interface User {
   plusActive: boolean;
   plusTheme: string | null;
   plusDecoration: string | null;
+  nameplate?: string | null;
   createdAt: number;
   banned?: boolean;
   email?: string | null;
@@ -325,6 +339,7 @@ export interface MessageAuthor {
   plusActive: boolean;
   plusTheme: string | null;
   plusDecoration: string | null;
+  nameplate?: string | null;
   badges: Badge[];
 }
 

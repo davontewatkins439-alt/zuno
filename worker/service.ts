@@ -52,6 +52,7 @@ export function decorate(u: Record<string, unknown>, badges: Badge[] = []) {
     }),
     plusActive: !!(u.is_owner || (u.plus_until && Number(u.plus_until) > now())),
     accentColor: (u.accent_color as string) || accentFor(String(u.id)),
+    nameplate: (u.nameplate as string) || null,
   };
 }
 

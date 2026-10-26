@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { hashPassword } from "./auth";
 import { now } from "./lib";
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
@@ -93,6 +93,13 @@ const SCHEMA: string[] = [
   "CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id, credited)",
   // ---- ZUNO boosts + server identity -----------------------------------
   "CREATE TABLE IF NOT EXISTS server_boosts (server_id TEXT NOT NULL, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (server_id, user_id))",
+  // ---- ZUNO nameplates --------------------------------------------------
+  `CREATE TABLE IF NOT EXISTS nameplates (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT, rarity TEXT NOT NULL DEFAULT 'standard',
+    unlock TEXT NOT NULL DEFAULT 'free', animation TEXT, active INTEGER NOT NULL DEFAULT 1,
+    sort INTEGER NOT NULL DEFAULT 0
+  )`,
+  "CREATE TABLE IF NOT EXISTS user_nameplates (user_id TEXT NOT NULL, nameplate_id TEXT NOT NULL, granted_by TEXT, granted_at INTEGER NOT NULL, PRIMARY KEY (user_id, nameplate_id))",
   "CREATE INDEX IF NOT EXISTS idx_server_boosts_server ON server_boosts(server_id)",
 ];
 
@@ -147,6 +154,7 @@ export async function ensureSchema(env: Env): Promise<void> {
     await ensureBadgeArtOnce(env);
     await ensureOwnerPlusOnce(env);
     await ensureQuestsOnce(env);
+    await ensureNameplatesOnce(env);
     return;
   }
   for (const sql of SCHEMA) {
@@ -166,6 +174,7 @@ export async function ensureSchema(env: Env): Promise<void> {
   await ensureColumn(env, "servers", "tag_badge", "tag_badge TEXT");
   await ensureColumn(env, "servers", "boost_goal", "boost_goal INTEGER NOT NULL DEFAULT 10");
   await ensureColumn(env, "servers", "boost_bar", "boost_bar INTEGER NOT NULL DEFAULT 1");
+  await ensureColumn(env, "users", "nameplate", "nameplate TEXT");
   await env.DB.prepare(
     "INSERT INTO meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   )
@@ -175,6 +184,7 @@ export async function ensureSchema(env: Env): Promise<void> {
   await ensureBadgeArtOnce(env);
   await ensureOwnerPlusOnce(env);
   await ensureQuestsOnce(env);
+  await ensureNameplatesOnce(env);
   if (env.DEMO_SEED === "true") await seedDemo(env).catch((err) => console.error("seed failed", err));
 }
 
@@ -371,6 +381,44 @@ async function ensureQuestsOnce(env: Env): Promise<void> {
       .run();
   }
   await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('quests_seed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Nameplates — the ZUNO profile banner behind your name.              */
+/* ------------------------------------------------------------------ */
+
+async function ensureNameplatesOnce(env: Env): Promise<void> {
+  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'nameplates_seed_v1'")
+    .first<{ value: string }>()
+    .catch(() => null);
+  if (done) return;
+  const plates: [string, string, string, string, string, string | null, number][] = [
+    [
+      "midnight-circuit",
+      "Midnight Circuit",
+      "The founding ZUNO plate: electric blue into icy cyan.",
+      "standard",
+      "free",
+      "shimmer",
+      90,
+    ],
+    ["neon-rain", "Neon Rain", "Violet downpour with a slow cyan sheen.", "premium", "plus", "rain", 80],
+    ["ghost-signal", "Ghost Signal", "Cold steel and static for low-key profiles.", "standard", "plus", "flicker", 70],
+    ["solar-flare", "Solar Flare", "Amber heat that bleeds into deep red.", "premium", "plus", "pulse", 60],
+    ["deep-current", "Deep Current", "Abyssal blue with a teal undertow.", "standard", "plus", null, 50],
+    ["static-bloom", "Static Bloom", "Pink and violet bloom caught mid-glitch.", "premium", "plus", "rain", 40],
+    ["city-lights", "City Lights", "Every neon sign on the block at once.", "legendary", "plus", "shimmer", 30],
+    ["origin", "Origin", "1 of 1 — reserved for the ZUNO owner account.", "legendary", "owner", "shimmer", 100],
+  ];
+  for (const [id, name, description, rarity, unlock, animation, sort] of plates) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort) VALUES (?, ?, ?, ?, ?, ?, 1, ?) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, rarity, unlock, animation, sort)
+      .run();
+  }
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
 }
 
 /* ------------------------------------------------------------------ */
