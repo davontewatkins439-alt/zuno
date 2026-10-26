@@ -3072,9 +3072,9 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
 .download-card {
   width: min(430px, 100%);
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 14px;
   border: 1px solid rgba(116, 190, 255, 0.16);
   border-radius: 16px;
   background: linear-gradient(160deg, rgba(11, 20, 36, 0.9), rgba(6, 11, 21, 0.92));
@@ -3082,6 +3082,14 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
 }
 
 .download-card.ready { border-color: rgba(95, 227, 255, 0.26); }
+
+.download-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.download-row + .download-row { border-top: 1px solid var(--line); }
 
 .download-icon {
   display: grid;
@@ -3095,7 +3103,7 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
   border: 1px solid rgba(95, 227, 255, 0.2);
 }
 
-.download-card.ready .download-icon {
+.download-icon.live {
   background: linear-gradient(140deg, rgba(47, 124, 255, 0.34), rgba(95, 227, 255, 0.22));
   color: #eaf8ff;
   border-color: rgba(95, 227, 255, 0.4);
@@ -3137,8 +3145,8 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
 .download-card.compact { width: 100%; }
 
 @media (max-width: 560px) {
-  .download-card { flex-wrap: wrap; }
-  .download-btn { width: 100%; justify-content: center; }
+  .download-row { flex-wrap: wrap; }
+  .download-row .download-btn { width: 100%; justify-content: center; }
 }
 
 /* ============================== staff applications ============================== */

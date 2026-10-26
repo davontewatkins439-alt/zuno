@@ -11,7 +11,7 @@ import { calls } from "./routes/calls";
 import { owner } from "./routes/owner";
 import { plus } from "./routes/plus";
 import { stream } from "./routes/stream";
-import { windowsDownload } from "./download";
+import { macDownload, windowsDownload } from "./download";
 
 type AppType = { Bindings: Env; Variables: { user: SessionUser } };
 
@@ -89,13 +89,10 @@ app.get("/api/public/config", async (c) => {
   });
 });
 
-// Public: the visitor-facing download button asks which Windows build exists.
+// Public: the visitor-facing download buttons ask which desktop builds exist.
 app.get("/api/public/download", async (c) => {
-  const download = await windowsDownload(c.env);
-  return c.json(
-    { platform: "windows", ...download },
-    { headers: { "cache-control": "public, max-age=300" } },
-  );
+  const [windows, macos] = await Promise.all([windowsDownload(c.env), macDownload(c.env)]);
+  return c.json({ windows, macos }, { headers: { "cache-control": "public, max-age=300" } });
 });
 
 app.use("/api/*", async (c, next) => {

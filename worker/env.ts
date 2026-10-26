@@ -16,6 +16,8 @@ export interface Env {
   GITHUB_TOKEN?: string;
   WINDOWS_INSTALLER_URL?: string;
   WINDOWS_INSTALLER_VERSION?: string;
+  MAC_INSTALLER_URL?: string;
+  MAC_INSTALLER_VERSION?: string;
 }
 
 export interface SessionUser {
