@@ -83,6 +83,11 @@ export interface ServerRow {
   welcome_message: string | null;
   rules: string | null;
   created_at: number;
+  category?: string | null;
+  tag?: string | null;
+  tag_badge?: string | null;
+  boost_goal?: number | null;
+  boost_bar?: number | null;
 }
 
 export interface ChannelRow {

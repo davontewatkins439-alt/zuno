@@ -5,7 +5,9 @@ import {
   Code2,
   Crown,
   Flag,
+  Flame,
   Gavel,
+  Gem,
   Headphones,
   Heart,
   Layers,
@@ -13,14 +15,33 @@ import {
   Rocket,
   Shield,
   Sparkles,
+  Star,
   Trophy,
   X,
+  Zap,
 } from "lucide-react";
 import type { Badge, User } from "../lib/types";
 import { avatarGradient, cls, initials, statusColor, statusLabel } from "../lib/utils";
 import { BadgeArt, BadgeTile } from "./BadgeArt";
 
 export { BadgeArt, BadgeTile };
+
+/** The little icon that sits inside a ZUNO server tag. */
+const TAG_BADGE_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+  gem: Gem,
+  bolt: Zap,
+  star: Star,
+  shield: Shield,
+  spark: Sparkles,
+  flame: Flame,
+};
+
+export const TAG_BADGE_KEYS = Object.keys(TAG_BADGE_ICONS);
+
+export function ServerTagBadge({ badge, size = 11 }: { badge?: string | null; size?: number }) {
+  const Icon = (badge && TAG_BADGE_ICONS[badge]) || Gem;
+  return <Icon size={size} />;
+}
 
 export function ZunoMark({ size = 32 }: { size?: number }) {
   return (

@@ -90,7 +90,7 @@ interface Store {
   friends: FriendsData | null;
   refreshFriends: () => Promise<void>;
   discover: DiscoverServer[] | null;
-  loadDiscover: (query?: string) => Promise<void>;
+  loadDiscover: (query?: string, category?: string) => Promise<void>;
   panel: Panel;
   setPanel: (panel: Panel) => void;
   modal: Modal | null;
@@ -333,10 +333,13 @@ export function AppProvider({ initialMe, onSessionLost, children }: Props) {
   }, [toast]);
 
   const loadDiscover = useCallback(
-    async (query = "") => {
+    async (query = "", category = "featured") => {
       try {
+        const params = new URLSearchParams();
+        if (query) params.set("q", query);
+        if (category && category !== "featured") params.set("category", category);
         const data = await api<{ servers: DiscoverServer[] }>(
-          `/api/servers/discover${query ? `?q=${encodeURIComponent(query)}` : ""}`,
+          `/api/servers/discover${params.size ? `?${params.toString()}` : ""}`,
         );
         setDiscover(data.servers);
       } catch (err) {

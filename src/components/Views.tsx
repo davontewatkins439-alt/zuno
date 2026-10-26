@@ -14,8 +14,17 @@ import {
 } from "lucide-react";
 import { useApp } from "../state";
 import { api } from "../lib/api";
-import { compact, formatShort } from "../lib/utils";
-import { Avatar, BadgeRow, IconButton, StatusDot, Verified, ZunoMark, ZunoWordmark } from "./ui";
+import { cls, compact, formatShort } from "../lib/utils";
+import {
+  Avatar,
+  BadgeRow,
+  IconButton,
+  ServerTagBadge,
+  StatusDot,
+  Verified,
+  ZunoMark,
+  ZunoWordmark,
+} from "./ui";
 
 export function HomeView() {
   const { me, navigate, openModal, openDm } = useApp();
@@ -394,133 +403,206 @@ export function FriendsView() {
   );
 }
 
+const DISCOVER_CATEGORIES = [
+  { id: "featured", label: "Featured", heading: "FIND YOUR PEOPLE", blurb: "Public ZUNO communities, from midnight studios to neon arenas." },
+  { id: "gaming", label: "Gaming", heading: "SQUAD UP", blurb: "Groups that play together, stay together. Find your next team." },
+  { id: "music", label: "Music", heading: "SHARE THE AUX", blurb: "Listening parties, producers and late-night radio rooms." },
+  { id: "social", label: "Social", heading: "HANG OUT", blurb: "Casual communities for talking, memes and everything between." },
+  { id: "creative", label: "Creative", heading: "MAKE THINGS", blurb: "Art, design, builds and writing — show what you are working on." },
+  { id: "community", label: "Community", heading: "BUILD TOGETHER", blurb: "Support spaces, study groups and neighbourhood servers." },
+  { id: "tools", label: "Moderation & Tools", heading: "RUN IT RIGHT", blurb: "Communities built around moderation, bots and server tooling." },
+] as const;
+
 export function DiscoverView() {
   const app = useApp();
-  const { discover, loadDiscover, navigate, refreshMe, openModal, toast, me } = app;
+  const { discover, loadDiscover, navigate, refreshMe, openModal, toast } = app;
   const [query, setQuery] = useState("");
   const [joining, setJoining] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "joined">("all");
+  const [category, setCategory] = useState<string>("featured");
+  const [loading, setLoading] = useState(false);
+
+  const active = DISCOVER_CATEGORIES.find((entry) => entry.id === category) ?? DISCOVER_CATEGORIES[0];
+
+  const reload = async (nextCategory = category, nextQuery = query) => {
+    setLoading(true);
+    try {
+      await loadDiscover(nextQuery, nextCategory);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!discover) void loadDiscover();
+    void reload("featured", "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = (discover ?? []).filter((server) => {
-    if (filter === "joined" && !server.joined) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return server.name.toLowerCase().includes(q) || (server.description ?? "").toLowerCase().includes(q);
   });
 
   return (
-    <section className="discover-view">
-      <div className="discover-hero">
-        <span className="eyebrow">
-          <Compass size={15} /> COMMUNITY DISCOVERY
-        </span>
-        <h1>Find your people.</h1>
-        <p>Public ZUNO communities, from midnight studios to neon arenas. Join with one click.</p>
-        <div className="discover-controls">
-          <label>
+    <section className="discover-shell">
+      <aside className="discover-nav">
+        <h2>Discover</h2>
+        <div className="discover-nav-group">
+          <span className="discover-nav-label">BROWSE</span>
+          <button type="button" className="active" onClick={() => void reload("featured")}>
+            <Compass size={16} /> Communities
+          </button>
+          {DISCOVER_CATEGORIES.slice(1).map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className={cls(category === entry.id && "active")}
+              onClick={() => {
+                setCategory(entry.id);
+                void reload(entry.id);
+              }}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+        <div className="discover-nav-foot">
+          <button type="button" className="primary-btn full" onClick={() => openModal({ type: "createServer" })}>
+            <Plus size={15} /> Create a server
+          </button>
+        </div>
+      </aside>
+
+      <div className="discover-main">
+        <header className="discover-main-head">
+          <div className="discover-tabs" role="tablist" aria-label="Discover categories">
+            {DISCOVER_CATEGORIES.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                aria-selected={category === entry.id}
+                className={cls(category === entry.id && "active")}
+                onClick={() => {
+                  setCategory(entry.id);
+                  void reload(entry.id);
+                }}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+          <label className="discover-search">
             <Search size={15} />
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void reload(category, query);
+              }}
               placeholder="Search communities"
               aria-label="Search communities"
             />
           </label>
-          <div className="segmented">
-            <button type="button" className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>
-              All
-            </button>
-            <button type="button" className={filter === "joined" ? "active" : ""} onClick={() => setFilter("joined")}>
-              Already joined
-            </button>
-          </div>
-          <button type="button" className="primary-btn" onClick={() => openModal({ type: "createServer" })}>
-            <Plus size={15} /> Create
+        </header>
+
+        <div className="discover-hero">
+          <h1>{active.heading}</h1>
+          <p>{active.blurb}</p>
+        </div>
+
+        <div className="discover-section-head">
+          <h2>{category === "featured" ? "Communities to join" : `${active.label} communities`}</h2>
+          <button type="button" className="ghost-btn small" onClick={() => void reload(category, query)} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
           </button>
         </div>
-      </div>
 
-      <div className="discover-grid">
-        {filtered.map((server) => (
-          <article className="discover-card" key={server.id}>
-            <div className="discover-banner" style={{ background: `linear-gradient(120deg, ${server.id ? "#2f7cff33" : "#000"}, transparent)` }} />
-            <div className="discover-card-body">
-              <div className="discover-card-head">
-                <span className="discover-icon">
-                  {server.iconId ? <img src={`/api/files/${server.iconId}`} alt="" /> : server.name.slice(0, 2).toUpperCase()}
-                </span>
-                <div>
-                  <h3>
-                    {server.name}
-                    {server.joined && <Check size={14} className="joined-check" />}
-                  </h3>
-                  <span className="discover-meta">
-                    <StatusDot status="online" size={7} /> {compact(server.onlineCount)} online · {compact(server.memberCount)} members
+        <div className="discover-grid">
+          {filtered.map((server) => (
+            <article className="discover-card" key={server.id}>
+              <div className="discover-banner" style={{ background: `linear-gradient(120deg, ${server.id ? "#2f7cff33" : "#000"}, transparent)` }} />
+              <div className="discover-card-body">
+                <div className="discover-card-head">
+                  <span className="discover-icon">
+                    {server.iconId ? <img src={`/api/files/${server.iconId}`} alt="" /> : server.name.slice(0, 2).toUpperCase()}
                   </span>
+                  <div>
+                    <h3>
+                      {server.name}
+                      {server.tag && (
+                        <span className="server-tag">
+                          <ServerTagBadge badge={server.tagBadge} size={10} />
+                          {server.tag}
+                        </span>
+                      )}
+                      {server.joined && <Check size={14} className="joined-check" />}
+                    </h3>
+                    <span className="discover-meta">
+                      <StatusDot status="online" size={7} /> {compact(server.onlineCount)} online · {compact(server.memberCount)} members
+                      {server.boostCount > 0 && ` · ${server.boostCount} boosts`}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <p>{server.description || "A ZUNO community."}</p>
-              {server.categories.length > 0 && (
-                <div className="tag-row">
-                  {server.categories.slice(0, 3).map((tag) => (
-                    <span key={tag} className="tag">
-                      {tag}
+                <p>{server.description || "A ZUNO community."}</p>
+                {server.categories.length > 0 && (
+                  <div className="tag-row">
+                    {server.categories.slice(0, 3).map((tag) => (
+                      <span key={tag} className="tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="discover-channels">
+                  {server.channels.slice(0, 5).map((channel, index) => (
+                    <span key={`${server.id}-${index}`}>
+                      {channel.type === "voice" ? "🔊" : "#"} {channel.name}
                     </span>
                   ))}
                 </div>
-              )}
-              <div className="discover-channels">
-                {server.channels.slice(0, 5).map((channel, index) => (
-                  <span key={`${server.id}-${index}`}>
-                    {channel.type === "voice" ? "🔊" : "#"} {channel.name}
-                  </span>
-                ))}
-              </div>
-              <button
-                type="button"
-                className={server.joined ? "ghost-btn full" : "primary-btn full"}
-                disabled={joining === server.id}
-                onClick={async () => {
-                  if (server.joined) {
-                    navigate(`/channels/${server.id}`);
-                    return;
-                  }
-                  setJoining(server.id);
-                  try {
-                    if (!server.isPublic) {
-                      toast("This community is invite-only. Ask a member for an invite link.", "info");
+                <button
+                  type="button"
+                  className={server.joined ? "ghost-btn full" : "primary-btn full"}
+                  disabled={joining === server.id}
+                  onClick={async () => {
+                    if (server.joined) {
+                      navigate(`/channels/${server.id}`);
                       return;
                     }
-                    await api(`/api/servers/${server.id}/join`, { method: "POST", body: {} });
-                    await refreshMe(true);
-                    await loadDiscover(query);
-                    navigate(`/channels/${server.id}`);
-                    toast(`Joined ${server.name}`, "success");
-                  } catch (err) {
-                    toast(err instanceof Error ? err.message : "Could not join", "error");
-                  } finally {
-                    setJoining(null);
-                  }
-                }}
-              >
-                {server.joined ? "Open community" : joining === server.id ? "Joining…" : "Join community"}
-              </button>
+                    setJoining(server.id);
+                    try {
+                      if (!server.isPublic) {
+                        toast("This community is invite-only. Ask a member for an invite link.", "info");
+                        return;
+                      }
+                      await api(`/api/servers/${server.id}/join`, { method: "POST", body: {} });
+                      await refreshMe(true);
+                      await reload(category, query);
+                      navigate(`/channels/${server.id}`);
+                      toast(`Joined ${server.name}`, "success");
+                    } catch (err) {
+                      toast(err instanceof Error ? err.message : "Could not join", "error");
+                    } finally {
+                      setJoining(null);
+                    }
+                  }}
+                >
+                  {server.joined ? "Open community" : joining === server.id ? "Joining…" : "Join community"}
+                </button>
+              </div>
+            </article>
+          ))}
+          {!filtered.length && (
+            <div className="panel-empty discover-empty">
+              <Compass size={26} />
+              <strong>{loading ? "Loading communities…" : "Nothing here yet"}</strong>
+              <span>Try another category, or be the first to list a community here.</span>
             </div>
-          </article>
-        ))}
-        {!filtered.length && (
-          <div className="panel-empty discover-empty">
-            <Compass size={26} />
-            <strong>{discover ? "No communities match that search" : "Loading communities…"}</strong>
-            <span>Try another keyword, or create your own ZUNO server.</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
 }
+

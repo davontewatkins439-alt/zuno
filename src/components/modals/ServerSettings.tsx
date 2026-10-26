@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Copy, Hash, Plus, Save, Settings, Trash2, Upload, Volume2 } from "lucide-react";
+import { Copy, Hash, Plus, Rocket, Save, Settings, Sparkles, Trash2, Upload, Volume2 } from "lucide-react";
 import { useApp } from "../../state";
 import { api, uploadFile } from "../../lib/api";
 import type { Channel, PermissionMeta, Role, ServerEmoji } from "../../lib/types";
 import { cls, formatShort, has, humanAction, P } from "../../lib/utils";
-import { Avatar, IconButton, Modal } from "../ui";
+import { Avatar, IconButton, Modal, ServerTagBadge, TAG_BADGE_KEYS } from "../ui";
 
 const TABS = [
   { id: "overview", label: "Overview", permission: P.MANAGE_SERVER },
@@ -14,6 +14,8 @@ const TABS = [
   { id: "invites", label: "Invites", permission: P.CREATE_INVITES },
   { id: "emoji", label: "Emoji", permission: P.MANAGE_EMOJIS },
   { id: "events", label: "Events", permission: P.MANAGE_EVENTS },
+  { id: "boost", label: "Boost Perks", permission: P.MANAGE_SERVER },
+  { id: "tag", label: "Server Tag", permission: P.MANAGE_SERVER },
   { id: "audit", label: "Audit log", permission: P.VIEW_AUDIT },
 ] as const;
 
@@ -58,6 +60,8 @@ export function ServerSettingsModal({ initialTab = "overview" }: { initialTab?: 
           {tab === "invites" && <InvitesTab />}
           {tab === "emoji" && <EmojiTab />}
           {tab === "events" && <EventsTab />}
+          {tab === "boost" && <BoostTab />}
+          {tab === "tag" && <TagTab />}
           {tab === "audit" && <AuditTab />}
         </div>
       </div>
@@ -1129,5 +1133,201 @@ export function MemberRolesModal({ userId }: { userId: string }) {
       </div>
       {!canManage && <p className="form-hint">You need the Manage Roles permission to change this.</p>}
     </Modal>
+  );
+}
+
+function BoostTab() {
+  const app = useApp();
+  const detail = app.server!;
+  const [goal, setGoal] = useState(String(detail.boosts.goal));
+  const [bar, setBar] = useState(detail.server.boostBar !== false);
+  const [busy, setBusy] = useState(false);
+  const boosts = detail.boosts;
+  const canManage = has(detail.permissions, P.MANAGE_SERVER) || detail.server.isOwner;
+  const pct = Math.min(100, (boosts.count / Math.max(1, Number(goal) || 1)) * 100);
+
+  const save = async (body: Record<string, unknown>, message: string) => {
+    setBusy(true);
+    try {
+      await api(`/api/servers/${detail.server.id}`, { method: "PATCH", body });
+      await app.reloadServer(true);
+      app.toast(message, "success");
+    } catch (err) {
+      app.toast(err instanceof Error ? err.message : "Could not save", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleBoost = async () => {
+    setBusy(true);
+    try {
+      if (boosts.mine) await api(`/api/servers/${detail.server.id}/boost`, { method: "DELETE" });
+      else await api(`/api/servers/${detail.server.id}/boost`, { method: "POST" });
+      await app.reloadServer(true);
+      app.toast(boosts.mine ? "Boost removed" : "Thanks for boosting this community!", "success");
+    } catch (err) {
+      app.toast(err instanceof Error ? err.message : "Could not boost right now", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="settings-stack">
+      <div className="boost-hero">
+        <span className="boost-hero-icon">
+          <Rocket size={22} />
+        </span>
+        <div>
+          <h3>{boosts.count} of {boosts.goal} boosts</h3>
+          <p>Boosts unlock the server tag and push this community up in Discover. ZUNO PLUS members can boost once.</p>
+        </div>
+        <button type="button" className={cls("primary-btn", boosts.mine && "ghost-btn")} onClick={() => void toggleBoost()} disabled={busy}>
+          <Sparkles size={14} /> {boosts.mine ? "Remove boost" : "Boost this community"}
+        </button>
+      </div>
+
+      <div className="boost-progress" role="img" aria-label={`${Math.round(pct)}% of the boost goal`}>
+        <span style={{ width: `${pct}%` }} />
+      </div>
+
+      <section className="settings-card">
+        <h3>Boosters</h3>
+        {boosts.users.length === 0 ? (
+          <p className="form-hint">No boosts yet. The first boost unlocks the server tag.</p>
+        ) : (
+          <ul className="boost-list">
+            {boosts.users.map((user) => (
+              <li key={user.userId}>
+                <Avatar
+                  user={{ id: user.userId, username: user.username, displayName: user.displayName, avatarId: user.avatarId, accentColor: "#2f7cff", plusDecoration: null }}
+                  size={26}
+                />
+                <span>{user.displayName}</span>
+                <em>since {formatShort(user.since)}</em>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="settings-card">
+        <h3>Display</h3>
+        <label className="switch-row">
+          <span>
+            Show the boost progress bar
+            <em>Servers with the bar enabled get more boosts. It appears under the server name in your channel list.</em>
+          </span>
+          <input
+            type="checkbox"
+            checked={bar}
+            disabled={!canManage || busy}
+            onChange={(e) => {
+              setBar(e.target.checked);
+              void save({ boostBar: e.target.checked }, e.target.checked ? "Boost bar enabled" : "Boost bar hidden");
+            }}
+          />
+        </label>
+        <label className="mini-field">
+          Boost goal
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={goal}
+            disabled={!canManage || busy}
+            onChange={(e) => setGoal(e.target.value)}
+            onBlur={() => void save({ boostGoal: Number(goal) }, "Boost goal updated")}
+          />
+        </label>
+      </section>
+    </div>
+  );
+}
+
+function TagTab() {
+  const app = useApp();
+  const detail = app.server!;
+  const [tag, setTag] = useState(detail.server.tag ?? "");
+  const [badge, setBadge] = useState<string | null>(detail.server.tagBadge ?? "gem");
+  const [busy, setBusy] = useState(false);
+  const boosts = detail.boosts.count;
+  const unlocked = boosts > 0;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api(`/api/servers/${detail.server.id}`, { method: "PATCH", body: { tag, tagBadge: badge } });
+      await app.reloadServer(true);
+      app.toast("Server tag saved", "success");
+    } catch (err) {
+      app.toast(err instanceof Error ? err.message : "Could not save the tag", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="settings-stack">
+      <p className="form-hint">
+        A server tag is 2–4 characters that members of this community can show next to their name. Change it and members have to re-apply
+        it themselves, which keeps tags from being used to impersonate others.
+      </p>
+
+      {!unlocked && (
+        <div className="tag-locked">
+          <Rocket size={18} />
+          <span>
+            <strong>Unlock with Boosting</strong>
+            <em>Reach one boost to create a server tag.</em>
+          </span>
+        </div>
+      )}
+
+      <label className="mini-field">
+        Choose name
+        <input
+          value={tag}
+          maxLength={4}
+          placeholder="ZUNO"
+          disabled={!unlocked || busy}
+          onChange={(e) => setTag(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+        />
+      </label>
+
+      <div className="mini-field">
+        Choose badge
+        <div className="tag-badges" role="radiogroup" aria-label="Tag badge">
+          {TAG_BADGE_KEYS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="radio"
+              aria-checked={badge === key}
+              aria-label={key}
+              className={cls("tag-badge", badge === key && "active")}
+              onClick={() => setBadge(key)}
+              disabled={!unlocked || busy}
+            >
+              <ServerTagBadge badge={key} size={15} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="tag-preview">
+        <span className="tag-preview-label">Preview</span>
+        <span className="server-tag">
+          <ServerTagBadge badge={badge} size={10} />
+          {tag || "TAG"}
+        </span>
+        <strong>{app.me.user.displayName}</strong>
+      </div>
+
+      <button type="button" className="primary-btn" onClick={() => void save()} disabled={!unlocked || busy || tag.length < 2}>
+        <Save size={14} /> {busy ? "Saving…" : "Save tag"}
+      </button>
+    </div>
   );
 }

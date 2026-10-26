@@ -78,6 +78,11 @@ export function serverSummary(s: ServerRow, extra: Record<string, unknown> = {})
     inviteCode: s.invite_code,
     ownerId: s.owner_id,
     createdAt: s.created_at,
+    category: s.category || "social",
+    tag: s.tag || null,
+    tagBadge: s.tag_badge || null,
+    boostGoal: Number(s.boost_goal ?? 10) || 10,
+    boostBar: Number(s.boost_bar ?? 1) === 1,
     ...extra,
   };
 }

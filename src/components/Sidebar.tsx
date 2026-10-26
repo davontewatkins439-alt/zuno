@@ -28,7 +28,7 @@ import { api } from "../lib/api";
 import type { Channel } from "../lib/types";
 import { cls, formatEventTime, formatShort, has, P } from "../lib/utils";
 import { AccountPanel, VoiceDock } from "./AccountPanel";
-import { Avatar, IconButton, ZunoMark, ZunoWordmark } from "./ui";
+import { Avatar, IconButton, ServerTagBadge, ZunoMark, ZunoWordmark } from "./ui";
 
 export function Sidebar() {
   const { route, me, server, serverId, openModal, toast, refreshMe, setPanel, voice } = useApp();
@@ -314,7 +314,13 @@ function ServerSidebar() {
     <>
       <header className="sidebar-head server-head">
         <button type="button" className="server-title" onClick={() => setMenuOpen((v) => !v)}>
-          <span>{detail.server.name}</span>
+          <span className="server-title-name">{detail.server.name}</span>
+          {detail.server.tag && (
+            <span className="server-tag" title="Server tag">
+              <ServerTagBadge badge={detail.server.tagBadge} size={10} />
+              {detail.server.tag}
+            </span>
+          )}
           <ChevronDown size={15} />
         </button>
         <div className="head-actions">
@@ -335,7 +341,15 @@ function ServerSidebar() {
                 )}
               </span>
               <div className="server-menu-identity">
-                <strong>{detail.server.name}</strong>
+                <strong>
+                  {detail.server.name}
+                  {detail.server.tag && (
+                    <span className="server-tag">
+                      <ServerTagBadge badge={detail.server.tagBadge} size={10} />
+                      {detail.server.tag}
+                    </span>
+                  )}
+                </strong>
                 <span className="server-menu-meta">
                   <Users size={11} /> {detail.server.memberCount} members
                   <i className="server-menu-dot" />
@@ -373,6 +387,26 @@ function ServerSidebar() {
                 >
                   <span className="server-menu-tile-icon"><Plus size={17} /></span>
                   <span>Create channel</span>
+                </button>
+              )}
+              {me.user.plusActive && (
+                <button
+                  type="button"
+                  className="server-menu-tile"
+                  onClick={async () => {
+                    try {
+                      if (detail.boosts.mine) await api(`/api/servers/${detail.server.id}/boost`, { method: "DELETE" });
+                      else await api(`/api/servers/${detail.server.id}/boost`, { method: "POST" });
+                      await reloadServer(true);
+                      toast(detail.boosts.mine ? "Boost removed" : "Community boosted — thank you!", "success");
+                      setMenuOpen(false);
+                    } catch (err) {
+                      toast(err instanceof Error ? err.message : "Could not boost right now", "error");
+                    }
+                  }}
+                >
+                  <span className="server-menu-tile-icon"><Sparkles size={17} /></span>
+                  <span>{detail.boosts.mine ? "Remove boost" : "Boost community"}</span>
                 </button>
               )}
               {canManageServer && (
@@ -453,6 +487,21 @@ function ServerSidebar() {
           </div>
         )}
       </header>
+
+      {detail.server.boostBar && detail.boosts.count > 0 && (
+        <button
+          type="button"
+          className="boost-bar"
+          onClick={() => openModal({ type: "serverSettings", tab: "boost" })}
+          aria-label={`${detail.boosts.count} of ${detail.boosts.goal} boosts`}
+        >
+          <span className="boost-bar-fill" style={{ width: `${Math.min(100, (detail.boosts.count / Math.max(1, detail.boosts.goal)) * 100)}%` }} />
+          <span className="boost-bar-label">
+            <Sparkles size={11} /> {detail.boosts.count} / {detail.boosts.goal} boosts
+          </span>
+        </button>
+      )}
+
 
       <div className="sidebar-scroll channel-scroll">
         {detail.events.length > 0 && (

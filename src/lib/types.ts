@@ -114,6 +114,11 @@ export interface ServerSummary {
   inviteCode: string | null;
   ownerId: string;
   createdAt: number;
+  category?: string;
+  tag?: string | null;
+  tagBadge?: string | null;
+  boostGoal?: number;
+  boostBar?: boolean;
   unreadCount: number;
   mentionCount: number;
   folderId: string | null;
@@ -282,6 +287,12 @@ export interface ServerDetail {
   events: ServerEvent[];
   announcements: Announcement[];
   permissionMeta: PermissionMeta[];
+  boosts: {
+    count: number;
+    mine: boolean;
+    goal: number;
+    users: { userId: string; username: string; displayName: string; avatarId: string | null; since: number }[];
+  };
 }
 
 export interface PermissionMeta {
@@ -390,6 +401,7 @@ export interface DiscoverServer extends ServerSummary {
   joined: boolean;
   categories: string[];
   channels: { name: string; type: string }[];
+  boostCount: number;
 }
 
 export interface PublicConfig {

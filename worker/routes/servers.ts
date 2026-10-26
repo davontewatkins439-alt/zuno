@@ -85,18 +85,35 @@ async function autoJoinPublic(db: D1Database, server: ServerRow, userId: string)
 
 /* ------------------------------- discovery ------------------------------ */
 
+// Categories a community can list itself under in Discover.
+const DISCOVER_CATEGORIES = new Set(["social", "gaming", "music", "creative", "community", "tools"]);
+const TAG_BADGES = new Set(["gem", "bolt", "star", "shield", "spark", "flame"]);
+
 servers.get("/discover", async (c) => {
   const db = c.env.DB;
   const me = c.get("user");
   const q = (c.req.query("q") || "").trim().slice(0, 60);
+  const category = (c.req.query("category") || "featured").trim().slice(0, 30);
+  const filters: string[] = ["s.is_public = 1"];
+  const args: unknown[] = [];
+  if (q) {
+    filters.push("(s.name LIKE ? OR s.description LIKE ?)");
+    args.push(`%${q}%`, `%${q}%`);
+  }
+  if (category !== "featured" && DISCOVER_CATEGORIES.has(category)) {
+    filters.push("s.category = ?");
+    args.push(category);
+  }
   const rows = await db
     .prepare(
-      `SELECT s.*, (SELECT COUNT(*) FROM server_members sm WHERE sm.server_id = s.id) as member_count
-       FROM servers s WHERE s.is_public = 1 ${q ? "AND (s.name LIKE ? OR s.description LIKE ?)" : ""}
-       ORDER BY member_count DESC LIMIT 40`,
+      `SELECT s.*,
+         (SELECT COUNT(*) FROM server_members sm WHERE sm.server_id = s.id) as member_count,
+         (SELECT COUNT(*) FROM server_boosts b WHERE b.server_id = s.id) as boost_count
+       FROM servers s WHERE ${filters.join(" AND ")}
+       ORDER BY boost_count DESC, member_count DESC LIMIT 40`,
     )
-    .bind(...(q ? [`%${q}%`, `%${q}%`] : []))
-    .all<ServerRow & { member_count: number }>();
+    .bind(...args)
+    .all<ServerRow & { member_count: number; boost_count: number }>();
   const myServerIds = new Set(
     (
       await db.prepare("SELECT server_id FROM server_members WHERE user_id = ?").bind(me.id).all<{ server_id: string }>()
@@ -126,9 +143,10 @@ servers.get("/discover", async (c) => {
       joined: myServerIds.has(s.id),
       categories: categories.results.map((x) => x.name),
       channels: previewChannels.results,
+      boostCount: s.boost_count ?? 0,
     });
   }
-  return c.json({ servers: out });
+  return c.json({ servers: out, category });
 });
 
 servers.get("/mine", async (c) => {
@@ -309,6 +327,14 @@ servers.get("/:id", async (c) => {
     (m) => Number(m.last_seen_at) > now() - 5 * 60 * 1000 && m.status !== "invisible",
   ).length;
   const myRoles = roles.filter((r) => memberRoleIds.includes(r.id));
+  const boostRows = await db
+    .prepare(
+      `SELECT b.user_id, b.created_at, u.username, u.display_name, u.avatar_id
+       FROM server_boosts b JOIN users u ON u.id = b.user_id
+       WHERE b.server_id = ? ORDER BY b.created_at ASC`,
+    )
+    .bind(server.id)
+    .all<{ user_id: string; created_at: number; username: string; display_name: string | null; avatar_id: string | null }>();
 
   return c.json({
     server: serverSummary(server, {
@@ -322,6 +348,18 @@ servers.get("/:id", async (c) => {
     }),
     categories: cats.results,
     channels: channelsWithUnread,
+    boosts: {
+      count: boostRows.results.length,
+      mine: boostRows.results.some((row) => row.user_id === me.id),
+      goal: Number(server.boost_goal ?? 10) || 10,
+      users: boostRows.results.map((row) => ({
+        userId: row.user_id,
+        username: row.username,
+        displayName: row.display_name || row.username,
+        avatarId: row.avatar_id,
+        since: row.created_at,
+      })),
+    },
     roles: roles.map((r) => ({ ...r, memberCount: memberRoleRows.results.filter((x) => x.role_id === r.id).length })),
     myRoles: myRoles.map((r) => ({ id: r.id, name: r.name, color: r.color })),
     permissions,
@@ -391,6 +429,39 @@ servers.patch("/:id", async (c) => {
   if (body.rules !== undefined) {
     sets.push("rules = ?");
     args.push(str(body.rules, 4000) || null);
+  }
+  if (body.category !== undefined) {
+    const category = str(body.category, 30) || "social";
+    if (!DISCOVER_CATEGORIES.has(category)) return bad(c, "Unknown community category.");
+    sets.push("category = ?");
+    args.push(category);
+  }
+  if (body.tag !== undefined) {
+    const tag = str(body.tag, 8).toUpperCase();
+    if (tag && !/^[A-Z0-9]{2,4}$/.test(tag)) return bad(c, "A server tag is 2–4 letters or numbers.");
+    if (tag) {
+      const boosts = await db
+        .prepare("SELECT COUNT(*) as n FROM server_boosts WHERE server_id = ?")
+        .bind(access.server.id)
+        .first<{ n: number }>();
+      if ((boosts?.n ?? 0) < 1) return bad(c, "Reach at least 1 boost to unlock a server tag.", 403);
+    }
+    sets.push("tag = ?");
+    args.push(tag || null);
+  }
+  if (body.tagBadge !== undefined) {
+    const badge = str(body.tagBadge, 20);
+    if (badge && !TAG_BADGES.has(badge)) return bad(c, "Unknown tag badge.");
+    sets.push("tag_badge = ?");
+    args.push(badge || null);
+  }
+  if (body.boostGoal !== undefined) {
+    sets.push("boost_goal = ?");
+    args.push(clamp(num(body.boostGoal, 10), 1, 100));
+  }
+  if (body.boostBar !== undefined) {
+    sets.push("boost_bar = ?");
+    args.push(bool(body.boostBar) ? 1 : 0);
   }
   if (body.iconId !== undefined) {
     const fileId = str(body.iconId, 64);
@@ -471,6 +542,56 @@ servers.delete("/:id", async (c) => {
     meta: { name: access.server.name },
   });
   return c.json({ ok: true });
+});
+
+/* -------------------------------- boosts -------------------------------- */
+
+const MAX_BOOSTS = 10;
+
+async function boostState(db: D1Database, serverId: string, userId: string) {
+  const count = await db
+    .prepare("SELECT COUNT(*) as n FROM server_boosts WHERE server_id = ?")
+    .bind(serverId)
+    .first<{ n: number }>();
+  const mine = await db
+    .prepare("SELECT 1 as ok FROM server_boosts WHERE server_id = ? AND user_id = ?")
+    .bind(serverId, userId)
+    .first<{ ok: number }>();
+  return { count: count?.n ?? 0, mine: !!mine };
+}
+
+servers.post("/:id/boost", async (c) => {
+  const db = c.env.DB;
+  const me = c.get("user");
+  const access = await serverAccess(db, me, c.req.param("id"));
+  if (!access) return c.json({ error: "Server not found" }, 404);
+  const serverId = access.server.id;
+  // Boosting is a ZUNO PLUS perk; the owner account always has PLUS.
+  const plus = me.is_owner === 1 || (me.plus_until && me.plus_until > now());
+  if (!plus) return c.json({ error: "Boosting is a ZUNO PLUS perk. Upgrade to boost communities." }, 403);
+
+  const state = await boostState(db, serverId, me.id);
+  if (state.mine) return bad(c, "You are already boosting this community.");
+  if (state.count >= MAX_BOOSTS) return bad(c, "This community already has all 10 boosts.");
+
+  await db
+    .prepare("INSERT OR IGNORE INTO server_boosts (server_id, user_id, created_at) VALUES (?, ?, ?)")
+    .bind(serverId, me.id, now())
+    .run();
+  await emit(db, "server", serverId, "server.boost", { userId: me.id });
+  await audit(db, { serverId, actorId: me.id, action: "server.boost", targetType: "server", targetId: serverId });
+  const next = await boostState(db, serverId, me.id);
+  return c.json({ ok: true, count: next.count, mine: next.mine });
+});
+
+servers.delete("/:id/boost", async (c) => {
+  const db = c.env.DB;
+  const me = c.get("user");
+  const serverId = c.req.param("id");
+  await db.prepare("DELETE FROM server_boosts WHERE server_id = ? AND user_id = ?").bind(serverId, me.id).run();
+  await emit(db, "server", serverId, "server.boost.remove", { userId: me.id });
+  const next = await boostState(db, serverId, me.id);
+  return c.json({ ok: true, count: next.count, mine: next.mine });
 });
 
 /* ------------------------------ membership ------------------------------ */

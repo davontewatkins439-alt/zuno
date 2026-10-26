@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { hashPassword } from "./auth";
 import { now } from "./lib";
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
@@ -91,6 +91,9 @@ const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS roblox_links (user_id TEXT PRIMARY KEY, roblox_user_id TEXT NOT NULL, roblox_username TEXT NOT NULL, code TEXT NOT NULL, created_at INTEGER NOT NULL, verified_at INTEGER)",
   "CREATE TABLE IF NOT EXISTS referrals (invitee_id TEXT PRIMARY KEY, inviter_id TEXT NOT NULL, code TEXT NOT NULL, created_at INTEGER NOT NULL, credited INTEGER NOT NULL DEFAULT 0)",
   "CREATE INDEX IF NOT EXISTS idx_referrals_inviter ON referrals(inviter_id, credited)",
+  // ---- ZUNO boosts + server identity -----------------------------------
+  "CREATE TABLE IF NOT EXISTS server_boosts (server_id TEXT NOT NULL, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (server_id, user_id))",
+  "CREATE INDEX IF NOT EXISTS idx_server_boosts_server ON server_boosts(server_id)",
 ];
 
 async function ensureColumn(env: Env, table: string, column: string, ddl: string): Promise<void> {
@@ -157,6 +160,12 @@ export async function ensureSchema(env: Env): Promise<void> {
   await ensureColumn(env, "users", "quest_streak", "quest_streak INTEGER NOT NULL DEFAULT 0");
   await ensureColumn(env, "users", "quest_streak_day", "quest_streak_day TEXT");
   await ensureColumn(env, "users", "quest_streak_best", "quest_streak_best INTEGER NOT NULL DEFAULT 0");
+  // Server identity: discovery category, the short member tag, and boosts.
+  await ensureColumn(env, "servers", "category", "category TEXT NOT NULL DEFAULT 'social'");
+  await ensureColumn(env, "servers", "tag", "tag TEXT");
+  await ensureColumn(env, "servers", "tag_badge", "tag_badge TEXT");
+  await ensureColumn(env, "servers", "boost_goal", "boost_goal INTEGER NOT NULL DEFAULT 10");
+  await ensureColumn(env, "servers", "boost_bar", "boost_bar INTEGER NOT NULL DEFAULT 1");
   await env.DB.prepare(
     "INSERT INTO meta (key, value) VALUES ('schema_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   )
