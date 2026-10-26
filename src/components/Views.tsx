@@ -16,6 +16,7 @@ import { useApp } from "../state";
 import { api } from "../lib/api";
 import { compact, formatShort } from "../lib/utils";
 import { Avatar, BadgeRow, IconButton, StatusDot, Verified, ZunoMark, ZunoWordmark } from "./ui";
+import { DownloadCard } from "./DownloadCard";
 
 export function HomeView() {
   const { me, navigate, openModal, openDm } = useApp();
@@ -162,6 +163,14 @@ export function HomeView() {
           </div>
         </section>
       </div>
+
+      <section className="home-desktop">
+        <div className="home-section-head">
+          <h2>Get ZUNO on your desktop</h2>
+          <span className="home-section-note">Same account, native window</span>
+        </div>
+        <DownloadCard />
+      </section>
     </section>
   );
 }

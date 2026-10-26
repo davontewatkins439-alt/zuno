@@ -3313,3 +3313,12 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
 @media (max-width: 900px) {
   .staff-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Desktop download block on the signed-in home view. */
+.home-desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.home-desktop .download-card { width: min(520px, 100%); }
