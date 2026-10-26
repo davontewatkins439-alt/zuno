@@ -3,11 +3,22 @@ import type { Env } from "./env";
 /**
  * Desktop download discovery.
  *
- * Installers are built by GitHub Actions and attached to one GitHub Release per
- * version, so this module asks GitHub which files exist right now. A release that
- * has not been published yet (or a deployment with no repository configured)
- * reports `available: false`, and the website shows "coming soon" instead of a
- * link that would 404.
+ * GitHub Actions publishes ONE RELEASE PER PLATFORM, so visitors see clearly
+ * separated "ZUNO … for Windows" and "ZUNO … for macOS" entries:
+ *
+ *   tag desktop-v1.0.0-win  ->  ZUNO_1.0.0_x64-setup.exe
+ *   tag desktop-v1.0.0-mac  ->  ZUNO_1.0.0_universal.dmg
+ *
+ * This module therefore looks through recent releases and picks the newest one
+ * that actually carries an installer for the requested platform. A platform
+ * with no installer yet reports `available: false`, and the website shows
+ * "coming soon" instead of a link that would 404.
+ *
+ * Two discovery paths are used because the anonymous GitHub REST API is rate
+ * limited per shared Workers egress IP:
+ *   1. REST `/releases` (rich: real sizes) when reachable.
+ *   2. The public `releases.atom` feed plus HEAD probes on the expected asset
+ *      URLs — no API quota involved, so the buttons keep working under load.
  */
 export type Platform = "windows" | "macos";
 
@@ -69,8 +80,31 @@ const PLATFORMS: Record<Platform, PlatformRules> = {
 
 const cache = new Map<string, { at: number; value: DownloadInfo }>();
 
+/** `desktop-v1.0.0-win` and `desktop-v1.0.0-mac` both mean "1.0.0". */
 function cleanVersion(tag: string): string {
-  return tag.replace(/^desktop-/, "").replace(/^v/, "");
+  return tag
+    .replace(/^desktop-/i, "")
+    .replace(/^v/i, "")
+    .replace(/-(windows|win|macos|mac|osx)$/i, "");
+}
+
+function versionRank(version: string): number[] {
+  return version
+    .split(/[.+-]/)
+    .map((part) => Number.parseInt(part, 10))
+    .map((n) => (Number.isFinite(n) ? n : 0));
+}
+
+/** Newest version first; stable because the sum of digits is never equal for real versions. */
+function compareVersions(a: string, b: string): number {
+  const left = versionRank(a);
+  const right = versionRank(b);
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i++) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }
 
 function unavailable(minOs: string, reason: string, extra: Partial<DownloadInfo> = {}): DownloadInfo {
@@ -86,69 +120,80 @@ function unavailable(minOs: string, reason: string, extra: Partial<DownloadInfo>
   };
 }
 
-async function fromGitHub(env: Env, repo: string, platform: Platform): Promise<DownloadInfo> {
-  const rules = PLATFORMS[platform];
-  const headers: Record<string, string> = {
+function headers(env: Env): Record<string, string> {
+  const base: Record<string, string> = {
     accept: "application/vnd.github+json",
     "user-agent": "ZUNO-site",
   };
-  if (env.GITHUB_TOKEN) headers.authorization = `Bearer ${env.GITHUB_TOKEN}`;
+  if (env.GITHUB_TOKEN) base.authorization = `Bearer ${env.GITHUB_TOKEN}`;
+  return base;
+}
 
-  const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers } as RequestInit);
-  if (!res.ok) return unavailable(rules.minOs, `GitHub responded ${res.status}.`);
+interface Candidate {
+  tag: string;
+  version: string;
+  assets: Asset[];
+  publishedAt: string | null;
+}
 
-  const release = (await res.json()) as {
+/** Newest matching asset across every recent release, API edition. */
+async function candidatesFromApi(env: Env, repo: string): Promise<Candidate[] | null> {
+  const res = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=20`, {
+    headers: headers(env),
+  } as RequestInit);
+  if (!res.ok) return null;
+  const list = (await res.json()) as {
     tag_name?: string;
     draft?: boolean;
     published_at?: string;
     assets?: { name: string; browser_download_url: string; size: number }[];
-  };
-  const version = release.tag_name ? cleanVersion(release.tag_name) : null;
-  if (release.draft) return unavailable(rules.minOs, "The release is still a draft.");
-  if (release.draft === undefined) return unavailable(rules.minOs, "GitHub returned an unexpected release.");
-
-  const asset = rules.pick(
-    (release.assets ?? []).map((a) => ({ name: a.name, url: a.browser_download_url, size: a.size })),
-  );
-  if (!asset) {
-    return unavailable(rules.minOs, "The latest release has no installer for this platform.", {
-      version,
+  }[];
+  if (!Array.isArray(list)) return null;
+  return list
+    .filter((release) => !release.draft && !!release.tag_name)
+    .map((release) => ({
+      tag: release.tag_name as string,
+      version: cleanVersion(release.tag_name as string),
       publishedAt: release.published_at ?? null,
-    });
-  }
-  return {
-    available: true,
-    version,
-    url: asset.url,
-    filename: asset.name,
-    size: asset.size,
-    publishedAt: release.published_at ?? null,
-    minOs: rules.minOs,
-  };
+      assets: (release.assets ?? []).map((a) => ({
+        name: a.name,
+        url: a.browser_download_url,
+        size: a.size,
+      })),
+    }));
 }
 
-/**
- * The REST API is rate limited per IP and Workers share egress IPs, so a 403 is
- * common. GitHub's public redirects and release downloads are not rate limited,
- * so fall back to them: /releases/latest points at the tag, and the asset URL is
- * derived from the tag and confirmed with a HEAD request.
- */
-async function fromPublicUrls(repo: string, platform: Platform): Promise<DownloadInfo | null> {
-  const rules = PLATFORMS[platform];
-  const latest = await fetch(`https://github.com/${repo}/releases/latest`, {
-    redirect: "manual",
-    headers: { "user-agent": "ZUNO-site" },
+/** Release tags from the public Atom feed — no API quota, works when the API 403s. */
+async function tagsFromAtom(repo: string): Promise<Candidate[] | null> {
+  const res = await fetch(`https://github.com/${repo}/releases.atom`, {
+    headers: { "user-agent": "ZUNO-site", accept: "application/atom+xml" },
   });
-  const location = latest.headers.get("location") ?? "";
-  const match = location.match(/\/releases\/tag\/(.+)$/);
-  if (!match) return null;
-  const tag = decodeURIComponent(match[1]);
-  const version = cleanVersion(tag);
+  if (!res.ok) return null;
+  const xml = await res.text();
+  const tags: string[] = [];
+  const pattern = new RegExp(`/releases/tag/([^"'<\\s]+)`, "g");
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(xml))) {
+    const tag = decodeURIComponent(match[1]);
+    if (!tags.includes(tag)) tags.push(tag);
+  }
+  if (!tags.length) return null;
+  return tags.map((tag) => ({
+    tag,
+    version: cleanVersion(tag),
+    publishedAt: null,
+    assets: [],
+  }));
+}
 
+async function probe(repo: string, tag: string, platform: Platform): Promise<DownloadInfo | null> {
+  const rules = PLATFORMS[platform];
+  const version = cleanVersion(tag);
   for (const name of rules.fallbackNames(version)) {
-    const url = `https://github.com/${repo}/releases/download/${tag}/${name}`;
-    const head = await fetch(url, { method: "HEAD", redirect: "manual", headers: { "user-agent": "ZUNO-site" } });
-    if ([200, 301, 302, 307].includes(head.status)) {
+    const url = `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${name}`;
+    try {
+      const head = await fetch(url, { method: "HEAD", redirect: "manual", headers: { "user-agent": "ZUNO-site" } });
+      if (![200, 301, 302, 303, 307, 308].includes(head.status)) continue;
       const size = Number(head.headers.get("content-length") ?? 0);
       return {
         available: true,
@@ -159,9 +204,54 @@ async function fromPublicUrls(repo: string, platform: Platform): Promise<Downloa
         publishedAt: null,
         minOs: rules.minOs,
       };
+    } catch {
+      /* try the next filename */
     }
   }
   return null;
+}
+
+function bestFromCandidates(repo: string, platform: Platform, candidates: Candidate[]): DownloadInfo | null {
+  const rules = PLATFORMS[platform];
+  const ranked = [...candidates].sort((a, b) => compareVersions(b.version, a.version));
+  for (const candidate of ranked) {
+    if (!candidate.assets.length) continue;
+    const asset = rules.pick(candidate.assets);
+    if (!asset) continue;
+    return {
+      available: true,
+      version: candidate.version,
+      url: asset.url,
+      filename: asset.name,
+      size: asset.size > 0 ? asset.size : null,
+      publishedAt: candidate.publishedAt,
+      minOs: rules.minOs,
+    };
+  }
+  return null;
+}
+
+async function discover(env: Env, repo: string, platform: Platform): Promise<DownloadInfo> {
+  const rules = PLATFORMS[platform];
+
+  const fromApi = await candidatesFromApi(env, repo).catch(() => null);
+  if (fromApi) {
+    const hit = bestFromCandidates(repo, platform, fromApi);
+    if (hit) return hit;
+  }
+
+  const fromFeed = await tagsFromAtom(repo).catch(() => null);
+  if (fromFeed) {
+    const ranked = [...fromFeed].sort((a, b) => compareVersions(b.version, a.version));
+    for (const candidate of ranked) {
+      const hit = await probe(repo, candidate.tag, platform);
+      if (hit) return hit;
+    }
+  }
+
+  return unavailable(rules.minOs, "No installer for this platform has been published yet.", {
+    version: fromApi?.[0]?.version ?? fromFeed?.[0]?.version ?? null,
+  });
 }
 
 export async function downloadFor(env: Env, platform: Platform): Promise<DownloadInfo> {
@@ -193,18 +283,9 @@ export async function downloadFor(env: Env, platform: Platform): Promise<Downloa
 
   let value: DownloadInfo;
   try {
-    value = await fromGitHub(env, repo, platform);
+    value = await discover(env, repo, platform);
   } catch {
     value = unavailable(rules.minOs, "GitHub could not be reached.");
-  }
-
-  if (!value.available) {
-    try {
-      const fallback = await fromPublicUrls(repo, platform);
-      if (fallback) value = fallback;
-    } catch {
-      /* keep the API verdict if the public pages are unreachable too */
-    }
   }
 
   cache.set(key, { at: Date.now(), value });

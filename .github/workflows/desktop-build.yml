@@ -114,11 +114,12 @@ jobs:
           if-no-files-found: error
           path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
 
-  # One release, both platforms, so Windows and macOS never race for the same tag.
+  # Two separate releases so visitors see a clear "for Windows" download and a
+  # separate "for macOS" download, each with its own install instructions.
   publish:
-    name: Publish release
+    name: Publish releases
     needs: [windows, macos]
-    if: always() && needs.windows.result == 'success'
+    if: always() && (needs.windows.result == 'success' || needs.macos.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -129,29 +130,70 @@ jobs:
           pattern: ZUNO-*-installers
           path: release-assets
           merge-multiple: true
+          if-no-files-found: ignore
 
       - name: Show what will be published
-        run: ls -lh release-assets
+        run: find release-assets -type f -printf '%f %s bytes\n'
 
-      - name: Publish GitHub Release
+      - name: Publish Windows release
+        if: hashFiles('release-assets/**/*.exe') != '' || hashFiles('release-assets/**/*.msi') != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
-          TAG="desktop-v$VERSION"
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" \
-              --title "ZUNO $VERSION" \
-              --notes "ZUNO desktop installers.
+          TAG="desktop-v${VERSION}-win"
+          cat > /tmp/windows.md <<EOF
+          ## ZUNO ${VERSION} for Windows
 
-          - Windows 10/11 64-bit: ZUNO_${VERSION}_x64-setup.exe
-          - macOS 10.15+ (Intel and Apple Silicon): Universal .dmg
+          Download the **.exe** below and run it to install ZUNO.
 
-          Unsigned builds — Windows SmartScreen and macOS Gatekeeper may warn.
+          - Windows 10 or 11, 64-bit
+          - Signs in to https://zunoo.freebuff.page — same account, servers, DMs and owner console as the website
+          - Unsigned build: if SmartScreen appears, choose **More info → Run anyway**
 
-          The desktop app is a native shell around https://zunoo.freebuff.page, so it uses the same account, servers, DMs and owner console as the website."
+          Building for macOS instead? See the ZUNO ${VERSION} for macOS release.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "ZUNO ${VERSION} for Windows" --notes-file /tmp/windows.md
+          else
+            gh release create "$TAG" --title "ZUNO ${VERSION} for Windows" --notes-file /tmp/windows.md
           fi
-          # Artifacts keep their internal folders, so only upload real files.
-          find release-assets -type f -print0 | xargs -0 gh release upload "$TAG" --clobber
+          find release-assets -type f \( -name '*.exe' -o -name '*.msi' \) -print0 | xargs -0 gh release upload "$TAG" --clobber
+          gh release view "$TAG" --json assets --jq '.assets[] | .name + " (" + (.size|tostring) + " bytes)"'
+
+      - name: Publish macOS release
+        if: hashFiles('release-assets/**/*.dmg') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="desktop-v${VERSION}-mac"
+          cat > /tmp/macos.md <<EOF
+          ## ZUNO ${VERSION} for macOS
+
+          Download the **.dmg** below, then:
+
+          1. Open the downloaded **ZUNO_${VERSION}_universal.dmg**
+          2. Drag **ZUNO** into the **Applications** folder shown in the window
+          3. Open ZUNO from **Applications** or **Launchpad**
+
+          One universal download runs on both Apple Silicon and Intel Macs (macOS 10.15 or newer). It signs in to https://zunoo.freebuff.page, so your account, servers, DMs and owner console are the same as the website.
+
+          **First launch is blocked by Gatekeeper** because this build is unsigned:
+
+          - Right-click (or Control-click) **ZUNO** in Applications → **Open** → **Open** again, **or**
+          - Run once in Terminal: \`sudo xattr -dr com.apple.quarantine /Applications/ZUNO.app\`
+
+          After the first launch macOS remembers your choice.
+
+          Building for Windows instead? See the ZUNO ${VERSION} for Windows release.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "ZUNO ${VERSION} for macOS" --notes-file /tmp/macos.md
+          else
+            gh release create "$TAG" --title "ZUNO ${VERSION} for macOS" --notes-file /tmp/macos.md
+          fi
+          find release-assets -type f -name '*.dmg' -print0 | xargs -0 gh release upload "$TAG" --clobber
           gh release view "$TAG" --json assets --jq '.assets[] | .name + " (" + (.size|tostring) + " bytes)"'

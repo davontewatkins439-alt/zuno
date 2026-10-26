@@ -26,9 +26,9 @@ src-tauri/
 | Desktop notifications (native command + web fallback) | Implemented |
 | Production URL / single database | Configured |
 | Rust crate type-checks for Windows (`x86_64-pc-windows-msvc`) | Verified |
-| Windows `.exe` installer | **Built** — v1.0.0 in the GitHub release |
-| macOS universal `.dmg` | **Built** — v1.0.0 in the same release |
-| Website download buttons + release lookup | Live for Windows and macOS |
+| Windows `.exe` installer | **Built** — v1.0.0, own GitHub release |
+| macOS universal `.dmg` | **Built** — v1.0.0, own GitHub release |
+| Website download buttons + release lookup | Live for Windows and macOS, one release per platform |
 | Windows `.msi` installer | Optional; add `msi` to the bundle list |
 
 Installers cannot be produced in this Linux workspace: Tauri builds per OS, and
@@ -80,10 +80,19 @@ automatically. The macOS job only needs secrets if you want signing.
 
 ### Publishing the installer as a GitHub Release
 
-The `windows` job now creates a **GitHub Release** tagged `desktop-v<version>` and
-attaches the installer to it (`contents: write` permission is already set). The
-website reads that release through the GitHub API, so it never links to a file
-that does not exist.
+The `publish` job creates **one release per platform**, so visitors see Windows
+and macOS as separate downloads:
+
+| Release | Tag | Asset |
+| --- | --- | --- |
+| ZUNO `<version>` for Windows | `desktop-v<version>-win` | `ZUNO_<version>_x64-setup.exe` |
+| ZUNO `<version>` for macOS | `desktop-v<version>-mac` | `ZUNO_<version>_universal.dmg` |
+
+The website looks through recent releases and picks the newest one that actually
+carries an installer for the requested platform, so it never links to a file that
+does not exist. If one platform's build fails, only that button says “coming soon”.
+Both discovery paths are free: the GitHub API when it answers, otherwise the
+public `releases.atom` feed plus HEAD checks on the expected asset URLs.
 
 To switch the website button on:
 
@@ -107,11 +116,17 @@ host the installer outside GitHub. Never commit any of them.
 | Windows 10/11 x64 | `ZUNO_1.0.0_x64-setup.exe` | ~2.1 MB |
 | macOS 10.15+ (universal) | `ZUNO_1.0.0_universal.dmg` | ~5.6 MB |
 
-Both are attached to `desktop-v1.0.0` and linked from the sign-in page. The
-installers are **unsigned**: Windows SmartScreen warns (More info → Run anyway),
-and macOS Gatekeeper blocks the first launch — right-click the app → **Open**, or
-run `xattr -dr com.apple.quarantine /Applications/ZUNO.app`. Signing needs a
-Windows code-signing certificate and an Apple Developer ID, both documented below.
+Windows lives on `desktop-v1.0.0-win` and macOS on `desktop-v1.0.0-mac`; the site
+links straight to the matching file. **Installing on a Mac:** open the `.dmg`,
+drag **ZUNO** into the Applications folder, then open it from Applications or
+Launchpad.
+
+The installers are **unsigned**: Windows SmartScreen warns (More info → Run
+anyway), and macOS Gatekeeper blocks the first launch — right-click the app →
+**Open** → **Open**, or run
+`xattr -dr com.apple.quarantine /Applications/ZUNO.app`. macOS remembers the
+choice after the first launch. Signing needs a Windows code-signing certificate
+and an Apple Developer ID, both documented below.
 
 ### Shipping an update later
 
