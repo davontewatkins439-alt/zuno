@@ -3169,6 +3169,7 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
 .download-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .download-copy strong { font-size: 12.5px; letter-spacing: 0.01em; }
 .download-copy span { font-size: 11px; color: var(--text-mute); }
+.download-copy .download-hint { font-size: 10.5px; font-style: normal; color: rgba(95, 227, 255, 0.72); }
 
 .download-btn {
   display: inline-flex;

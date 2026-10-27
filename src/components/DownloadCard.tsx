@@ -67,6 +67,9 @@ export function DownloadCard({ compact = false }: { compact?: boolean }) {
       label: "ZUNO for macOS",
       icon: <Laptop size={18} />,
       info: data?.macos,
+      // A Mac install is always a clean one: no session or files come across,
+      // so the app opens on the ZUNO sign-in screen.
+      hint: "Clean install — sign in fresh on first launch",
     },
   ];
 
@@ -82,6 +85,7 @@ export function DownloadCard({ compact = false }: { compact?: boolean }) {
             <div className="download-copy">
               <strong>{row.label}</strong>
               <span>{row.info || failed ? meta(row.info) : "Checking for desktop app…"}</span>
+              {row.hint ? <em className="download-hint">{row.hint}</em> : null}
             </div>
             {ready ? (
               <a className="download-btn" href={row.info!.url!} rel="noreferrer">
