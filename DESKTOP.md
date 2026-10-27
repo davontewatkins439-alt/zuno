@@ -26,8 +26,8 @@ src-tauri/
 | Desktop notifications (native command + web fallback) | Implemented |
 | Production URL / single database | Configured |
 | Rust crate type-checks for Windows (`x86_64-pc-windows-msvc`) | Verified |
-| Windows `.exe` installer | **Built** — v1.0.0, own GitHub release |
-| macOS universal `.dmg` | **Built** — v1.0.0, own GitHub release |
+| Windows `.exe` installer | **Built and published** — v1.0.0, own GitHub release |
+| macOS universal `.dmg` | **Built and published** — v1.0.0, own GitHub release |
 | Website download buttons + release lookup | Live for Windows and macOS, one release per platform |
 | Windows `.msi` installer | Optional; add `msi` to the bundle list |
 
@@ -70,7 +70,8 @@ runner and uploads it as a downloadable artifact. It builds the NSIS `.exe`.
 1. Create an **empty** repository on github.com (no README, no .gitignore).
 2. Upload/push the project to it (see “Putting the project on GitHub” below).
 3. On GitHub open **Actions → Desktop installers → Run workflow → Run workflow**.
-   Leave “Also build the macOS installers” unticked for a Windows-only run.
+   Leave “Also build the macOS installer” ticked to produce both installers, or
+   untick it for a Windows-only run.
 4. Wait ~10–20 minutes for the green tick.
 5. Open the finished run and download the **ZUNO-windows-installers** artifact
    (a `.zip`). Unzip it — inside is `ZUNO_1.0.0_x64-setup.exe`.
@@ -114,12 +115,21 @@ host the installer outside GitHub. Never commit any of them.
 | Platform | File | Size |
 | --- | --- | --- |
 | Windows 10/11 x64 | `ZUNO_1.0.0_x64-setup.exe` | ~2.1 MB |
-| macOS 10.15+ (universal) | `ZUNO_1.0.0_universal.dmg` | ~5.6 MB |
+| macOS 10.15+ (universal) | `ZUNO_1.0.0_universal.dmg` | ~5.4 MB |
 
 Windows lives on `desktop-v1.0.0-win` and macOS on `desktop-v1.0.0-mac`; the site
-links straight to the matching file. **Installing on a Mac:** open the `.dmg`,
-drag **ZUNO** into the Applications folder, then open it from Applications or
-Launchpad.
+links straight to the matching file.
+
+**Installing on a Mac:** open the `.dmg`, drag **ZUNO** into the Applications
+folder, then open it from Applications or Launchpad.
+
+**Mac users start fresh.** The macOS download is a clean install: nothing is
+copied from the Windows app or from another Mac. On first launch ZUNO opens on
+its normal sign-in screen, so the person either signs in with their existing
+ZUNO email and password or creates an account right there. Their servers, DMs,
+badges, nameplates and owner console appear because the app loads
+`https://zunoo.freebuff.page` — the same live service, with no local database and
+no data to migrate.
 
 The installers are **unsigned**: Windows SmartScreen warns (More info → Run
 anyway), and macOS Gatekeeper blocks the first launch — right-click the app →

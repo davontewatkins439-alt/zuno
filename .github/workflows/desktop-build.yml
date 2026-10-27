@@ -149,7 +149,7 @@ jobs:
           Download the **.exe** below and run it to install ZUNO.
 
           - Windows 10 or 11, 64-bit
-          - Signs in to https://zunoo.freebuff.page — same account, servers, DMs and owner console as the website
+          - Fresh install: opens on the ZUNO sign-in screen, then loads your account, servers, DMs and owner console from https://zunoo.freebuff.page
           - Unsigned build: if SmartScreen appears, choose **More info → Run anyway**
 
           Building for macOS instead? See the ZUNO ${VERSION} for macOS release.
@@ -179,7 +179,16 @@ jobs:
           2. Drag **ZUNO** into the **Applications** folder shown in the window
           3. Open ZUNO from **Applications** or **Launchpad**
 
-          One universal download runs on both Apple Silicon and Intel Macs (macOS 10.15 or newer). It signs in to https://zunoo.freebuff.page, so your account, servers, DMs and owner console are the same as the website.
+          One universal download runs on both Apple Silicon and Intel Macs (macOS 10.15 or newer).
+
+          ### Starting fresh
+
+          This download is a clean install — nothing is copied over from another computer or from the Windows app. On first launch ZUNO opens on its normal sign-in screen:
+
+          - **Already have an account?** Sign in with that email and password. Your servers, DMs, badges, nameplates and owner console are all there, because ZUNO reads them from the same live service.
+          - **New here?** Choose sign-up and create an account right in the app.
+
+          There is no local database to set up and no code to paste: ZUNO opens https://zunoo.freebuff.page inside its own window.
 
           **First launch is blocked by Gatekeeper** because this build is unsigned:
 
