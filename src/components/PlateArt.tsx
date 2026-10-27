@@ -683,6 +683,83 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
           </g>
         </g>
       );
+    case "skull":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#07060c" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.26" />
+          <ellipse cx="250" cy="58" rx="74" ry="11" fill={a} opacity="0.32" />
+          <g transform="translate(248 28)">
+            <circle cx="0" cy="0" r="24" fill={`url(#${sid})`} opacity="0.4" />
+            <path d="M-19 2a19 19 0 0 1 38 0v4c0 4-3 6-6 6H-13c-3 0-6-2-6-6Z" fill="#efe6d4" />
+            <path d="M-12 12h8v10h-8Z M4 12h8v10h-8Z" fill="#efe6d4" />
+            <path d="M-5 12h10v9h-10Z" fill="#e3d8c2" />
+            <ellipse cx="-7" cy="-2" rx="6" ry="7" fill="#0a0a12" />
+            <ellipse cx="7" cy="-2" rx="6" ry="7" fill="#0a0a12" />
+            <path d="M0 5l-3 5h6Z" fill="#0a0a12" />
+            <g stroke="#0a0a12" strokeWidth="0.7" opacity="0.45">
+              <path d="M-8 14v8M-3 14v8M3 14v8M8 14v8" />
+            </g>
+          </g>
+          <g fill={b} opacity="0.75">
+            {[
+              [186, 18],
+              [206, 44],
+              [292, 20],
+              [304, 42],
+            ].map(([x, y], i) => (
+              <rect key={i} x={x} y={y} width="2" height="2.6" rx="1" />
+            ))}
+          </g>
+        </g>
+      );
+    case "tomb":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#06070f" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.2" />
+          <circle cx="290" cy="12" r="8" fill="#eef2ff" opacity="0.55" />
+          <circle cx="290" cy="12" r="16" fill="#eef2ff" opacity="0.1" />
+          <g fill="#131a28" stroke={b} strokeOpacity="0.34" strokeWidth="1">
+            <path d="M196 47V31a12 12 0 0 1 24 0v16Z" />
+            <path d="M232 47V36a10 10 0 0 1 20 0v11Z" opacity="0.8" />
+            <path d="M268 47V27a8 8 0 0 1 16 0v20Z" opacity="0.62" />
+          </g>
+          <g stroke="#e6ecf8" strokeOpacity="0.5" strokeWidth="1.2">
+            <path d="M203 27v11M198 32h10" />
+            <path d="M272 24v13M267 29h10" />
+          </g>
+          <path d="M0 47h320v13H0Z" fill="#080a12" />
+          <rect y="36" width="320" height="24" fill={`url(#${sid})`} opacity="0.55" />
+        </g>
+      );
+    case "potion":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#07060e" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.28" />
+          <g transform="translate(250 30)">
+            <ellipse cx="0" cy="2" rx="38" ry="18" fill={`url(#${sid})`} opacity="0.55" />
+            <path d="M-23 0h46a23 23 0 0 1-46 0Z" fill="#0c0f18" stroke={b} strokeOpacity="0.55" />
+            <ellipse cx="0" cy="0" rx="23" ry="7" fill="#0c0f18" stroke={b} strokeWidth="1" strokeOpacity="0.55" />
+            <ellipse cx="0" cy="0.6" rx="18" ry="5" fill={b} opacity="0.65" />
+            <path d="M-12 20l-5 9M12 20l5 9" stroke="#161a26" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="-9" cy="-9" r="3" fill={b} opacity="0.85" />
+            <circle cx="4" cy="-15" r="2.2" fill={b} opacity="0.7" />
+            <circle cx="12" cy="-8" r="2.6" fill={b} opacity="0.6" />
+            <circle cx="-2" cy="-6" r="1.6" fill="#ffffff" opacity="0.5" />
+          </g>
+          <g fill={b} opacity="0.7">
+            {[
+              [196, 14],
+              [214, 46],
+              [300, 16],
+            ].map(([x, y], i) => (
+              <rect key={i} x={x} y={y} width="2" height="2.4" rx="1" />
+            ))}
+          </g>
+        </g>
+      );
     default:
       return <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.5" />;
   }

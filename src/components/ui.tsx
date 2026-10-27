@@ -281,6 +281,63 @@ export function Modal({
 export function StickerArt({ name, size = 96 }: { name: string; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 96 96", "aria-hidden": true as const };
   switch (name) {
+    case "zuno-pumpkin":
+      return (
+        <svg {...common} className="sticker">
+          <circle cx="48" cy="48" r="42" fill="#150a06" stroke="#ff8a3d" strokeWidth="2" />
+          <path d="M48 26c-2-6 2-10 7-10 0 6-3 9-7 10Z" fill="#4a6b2a" />
+          <ellipse cx="48" cy="54" rx="26" ry="21" fill="#241708" stroke="#ff8a3d" strokeWidth="1.5" />
+          <ellipse cx="36" cy="54" rx="9" ry="19" fill="#2c1b09" opacity="0.9" />
+          <ellipse cx="60" cy="54" rx="9" ry="19" fill="#2c1b09" opacity="0.9" />
+          <path d="M36 46l7-7 4 7Z" fill="#ffb347" />
+          <path d="M60 46l-7-7-4 7Z" fill="#ffb347" />
+          <path d="M38 58l5-4 4 5 4-5 5 4-6 8h-6Z" fill="#ffb347" />
+        </svg>
+      );
+    case "zuno-bat":
+      return (
+        <svg {...common} className="sticker">
+          <circle cx="48" cy="48" r="42" fill="#0b0718" stroke="#a06bff" strokeWidth="2" />
+          <circle cx="66" cy="34" r="12" fill="#f6ecd6" opacity="0.9" />
+          <path
+            d="M48 44c-6-9-17-11-22-3 6 0 9 5 10 9 4-3 6-3 10 0 4-3 6-3 10 0 1-4 4-9 10-9-5-8-16-6-22 3Z"
+            fill="#a06bff"
+          />
+          <path d="M45 40l1 6 3-4M51 40l-1 6-3-4" stroke="#0b0718" strokeWidth="1.4" fill="none" />
+          <g fill="#a06bff" opacity="0.5">
+            <circle cx="26" cy="60" r="2" />
+            <circle cx="70" cy="62" r="1.6" />
+            <circle cx="58" cy="72" r="1.8" />
+          </g>
+        </svg>
+      );
+    case "zuno-skull":
+      return (
+        <svg {...common} className="sticker">
+          <circle cx="48" cy="48" r="42" fill="#0a0a12" stroke="#efe6d4" strokeWidth="2" />
+          <path d="M28 44a20 20 0 0 1 40 0v6c0 5-4 7-7 7H35c-3 0-7-2-7-7Z" fill="#efe6d4" />
+          <path d="M37 57h8v13h-8Z M51 57h8v13h-8Z" fill="#efe6d4" />
+          <ellipse cx="40" cy="44" rx="7" ry="8" fill="#0a0a12" />
+          <ellipse cx="56" cy="44" rx="7" ry="8" fill="#0a0a12" />
+          <path d="M48 52l-4 6h8Z" fill="#0a0a12" />
+          <g stroke="#0a0a12" strokeWidth="1" opacity="0.5">
+            <path d="M41 60v10M48 60v10M55 60v10" />
+          </g>
+        </svg>
+      );
+    case "zuno-candy":
+      return (
+        <svg {...common} className="sticker">
+          <circle cx="48" cy="48" r="42" fill="#150a10" stroke="#ffcf5c" strokeWidth="2" />
+          <path d="M34 24h28L48 76Z" fill="#ffcf5c" />
+          <path d="M34 24h28l-5 20H39Z" fill="#ff8a3d" />
+          <path d="M39 44h18L48 76Z" fill="#fff3dd" />
+          <g fill="#ff5fa8" opacity="0.7">
+            <circle cx="26" cy="62" r="3" />
+            <circle cx="72" cy="58" r="2.4" />
+          </g>
+        </svg>
+      );
     case "zuno-bolt":
       return (
         <svg {...common} className="sticker">

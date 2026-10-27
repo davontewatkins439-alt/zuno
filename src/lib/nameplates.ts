@@ -35,7 +35,10 @@ export interface PlateArtSpec {
     | "bats"
     | "web"
     | "ghost"
-    | "candy";
+    | "candy"
+    | "skull"
+    | "tomb"
+    | "potion";
 }
 
 export const PLATE_ART: Record<string, PlateArtSpec> = {
@@ -88,6 +91,13 @@ export const PLATE_ART: Record<string, PlateArtSpec> = {
   "cobweb-veil": { a: "#0d0a1c", b: "#c0c9d6", glow: "rgba(192,201,214,0.35)", scene: "web" },
   "candy-storm": { a: "#1a0a14", b: "#ffcf5c", glow: "rgba(255,207,92,0.45)", scene: "candy" },
   "midnight-bats": { a: "#140b2a", b: "#a06bff", glow: "rgba(160,107,255,0.5)", scene: "bats" },
+  "trick-or-treat": { a: "#1a0a14", b: "#ffb347", glow: "rgba(255,179,71,0.45)", scene: "candy" },
+  "carved-skull": { a: "#0a0912", b: "#efe6d4", glow: "rgba(239,230,212,0.4)", scene: "skull" },
+  "bone-chorus": { a: "#0b0d16", b: "#c8d4ea", glow: "rgba(200,212,234,0.4)", scene: "skull" },
+  "graveyard-mist": { a: "#080a14", b: "#9fb8d8", glow: "rgba(159,184,216,0.38)", scene: "tomb" },
+  "tombstone-tide": { a: "#0c0a18", b: "#b79cff", glow: "rgba(183,156,255,0.45)", scene: "tomb" },
+  "cauldron-brew": { a: "#0b1208", b: "#a6ff3d", glow: "rgba(166,255,61,0.45)", scene: "potion" },
+  "potion-noir": { a: "#120712", b: "#ff5fa8", glow: "rgba(255,95,168,0.5)", scene: "potion" },
   // Owner-only tier. Matte black, gold and chrome — built to read as the top
   // of the ladder and never handed out by any unlock rule but ownership.
   "zuno-1of1": { a: "#08090f", b: "#ffd76e", glow: "rgba(255,199,60,0.55)", scene: "figure" },
@@ -111,6 +121,8 @@ export const PLATE_ART: Record<string, PlateArtSpec> = {
   "sovereign-hollow": { a: "#05060b", b: "#ff8a3d", glow: "rgba(255,138,61,0.5)", scene: "crown" },
   "haunted-noir": { a: "#04050a", b: "#ffd76e", glow: "rgba(255,215,110,0.4)", scene: "bats" },
   "owner-witchfire": { a: "#05070d", b: "#a6ff3d", glow: "rgba(166,255,61,0.45)", scene: "web" },
+  "owner-bone-crown": { a: "#05060b", b: "#efe6d4", glow: "rgba(239,230,212,0.42)", scene: "skull" },
+  "owner-crypt": { a: "#04050a", b: "#ffd76e", glow: "rgba(255,215,110,0.4)", scene: "tomb" },
 };
 
 export const NAMEPLATE_IDS = Object.keys(PLATE_ART);

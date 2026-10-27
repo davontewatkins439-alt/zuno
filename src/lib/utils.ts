@@ -159,12 +159,20 @@ export const EMOJI_GROUPS: { label: string; emoji: string[] }[] = [
     emoji: ["🌙", "🌃", "☕", "🍕", "🎮", "🎨", "🎵", "📚", "🏆", "🚀", "❤️", "🖤"],
   },
   {
+    label: "Spooky",
+    emoji: ["🎃", "👻", "🦇", "💀", "🕷️", "🕸️", "🕯️", "⚰️", "🧟", "🧛", "🍬", "🌕"],
+  },
+  {
     label: "Symbols",
     emoji: ["✅", "❌", "⚠️", "🔒", "📌", "🔗", "💡", "⭐", "🔷", "🔶", "⬆️", "⬇️"],
   },
 ];
 
 export const STICKERS: { key: string; label: string }[] = [
+  { key: "zuno-pumpkin", label: "Pumpkin" },
+  { key: "zuno-bat", label: "Bats" },
+  { key: "zuno-skull", label: "Skull" },
+  { key: "zuno-candy", label: "Candy corn" },
   { key: "zuno-bolt", label: "Voltage" },
   { key: "zuno-crown", label: "Own it" },
   { key: "zuno-ghost", label: "Late night" },

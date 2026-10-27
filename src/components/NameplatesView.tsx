@@ -208,10 +208,19 @@ export function NameplatesView() {
   const plates = data?.nameplates ?? [];
   const bundles = data?.bundles ?? [];
   const isOwner = app.me.user.isOwner;
+  const halloweenBundle = bundles.find((bundle) => bundle.id === "halloween-bundle") ?? null;
+  // Every seasonal pack shares the same closing date, so the drop is whatever
+  // retires with it — new packs join the banner without extra bookkeeping.
+  const halloweenEndsAt = halloweenBundle?.endsAt ?? null;
+  const halloweenPacks = halloweenEndsAt
+    ? bundles.filter((bundle) => bundle.limited && bundle.endsAt === halloweenEndsAt)
+    : [];
+  const halloweenPlateCount = halloweenPacks.reduce((total, bundle) => total + bundle.total, 0);
 
   const visibleBundles = useMemo(() => {
     const q = bundleQuery.trim().toLowerCase();
     const list = bundles.filter((bundle) => {
+      if (bundleTier === "halloween") return !!halloweenEndsAt && bundle.limited && bundle.endsAt === halloweenEndsAt;
       if (bundleTier === "owner" && bundle.unlock !== "owner") return false;
       if (bundleTier === "plus" && bundle.unlock !== "plus") return false;
       if (bundleTier === "owned" && !bundle.claimed) return false;
@@ -225,7 +234,7 @@ export function NameplatesView() {
       if (bundleSort === "az") return a.name.localeCompare(b.name);
       return b.total - a.total || a.name.localeCompare(b.name);
     });
-  }, [bundles, bundleTier, bundleQuery, bundleSort]);
+  }, [bundles, bundleTier, bundleQuery, bundleSort, halloweenEndsAt]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -249,7 +258,6 @@ export function NameplatesView() {
   const favorites = plates.filter((plate) => plate.favorite).length;
   const verified = app.me.user.isOwner || app.me.user.badges.some((badge) => badge.slug === "verified");
   const ownerBundleCount = bundles.filter((bundle) => bundle.unlock === "owner").length;
-  const halloweenBundle = bundles.find((bundle) => bundle.id === "halloween-bundle") ?? null;
   const openBundle = openBundleId ? bundles.find((bundle) => bundle.id === openBundleId) ?? null : null;
 
   const renderBundleAction = (bundle: NameplateBundle) => {
@@ -401,7 +409,7 @@ export function NameplatesView() {
               <div className="halloween-strip-copy">
                 <strong>Halloween drop is live</strong>
                 <span>
-                  {halloweenBundle.total} carved plates plus a free pumpkin plate for every account
+                  {halloweenPlateCount} carved plates across {halloweenPacks.length} packs — free plates included for every account
                   {halloweenBundle.endsAt
                     ? ` · ends in ${Math.max(0, Math.ceil((halloweenBundle.endsAt - Date.now()) / 86_400_000))} days`
                     : ""}
@@ -413,8 +421,8 @@ export function NameplatesView() {
                   type="button"
                   className="ghost-btn small"
                   onClick={() => {
-                    setBundleQuery("Halloween");
-                    setBundleTier("all");
+                    setBundleQuery("");
+                    setBundleTier("halloween");
                   }}
                 >
                   See the drop
@@ -426,6 +434,7 @@ export function NameplatesView() {
           <div className="plates-filters bundle-filters" role="tablist" aria-label="Bundle access">
             {[
               { id: "all", label: `All bundles` },
+              ...(halloweenBundle ? [{ id: "halloween", label: "Halloween" }] : []),
               { id: "plus", label: "ZUNO PLUS" },
               { id: "owner", label: `Owner (${ownerBundleCount})` },
               { id: "owned", label: "Fully owned" },
