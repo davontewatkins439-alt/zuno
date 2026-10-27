@@ -2,7 +2,7 @@
 
 The desktop app is a **Tauri 2 shell around the deployed ZUNO website**. It loads
 `https://zunoo.freebuff.page` in a native window, so it uses the same accounts,
-database, servers, DMs, calls and owner console as the browser. There is no local
+database, servers, DMs and calls as the browser. There is no local
 database, no second sign-up, and no sync layer — the website is the source of truth.
 
 Files live in `src-tauri/`; the web project itself is unchanged.
@@ -126,8 +126,8 @@ folder, then open it from Applications or Launchpad.
 **Mac users start fresh.** The macOS download is a clean install: nothing is
 copied from the Windows app or from another Mac. On first launch ZUNO opens on
 its normal sign-in screen, so the person either signs in with their existing
-ZUNO email and password or creates an account right there. Their servers, DMs,
-badges, nameplates and owner console appear because the app loads
+ZUNO email and password or creates an account right there. Their own servers,
+DMs, badges and nameplates appear because the app loads
 `https://zunoo.freebuff.page` — the same live service, with no local database and
 no data to migrate.
 
