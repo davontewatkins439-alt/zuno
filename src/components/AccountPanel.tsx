@@ -30,13 +30,9 @@ export function AccountPanel() {
   };
 
   return (
-    <div className="account-panel">
-      <button
-        type="button"
-        className={cls("account-identity", plateClass(user.nameplate))}
-        onClick={() => void openProfile(user.id)}
-      >
-        <PlateArt id={user.nameplate} />
+    <div className={cls("account-panel", plateClass(user.nameplate))}>
+      <PlateArt id={user.nameplate} />
+      <button type="button" className="account-identity" onClick={() => void openProfile(user.id)}>
         <Avatar user={user} size={36} showStatus decoration={user.plusDecoration} />
         <span className="account-meta">
           <span className="account-name">
