@@ -342,7 +342,7 @@ function UsersTab() {
                     disabled={busy === user.id}
                     onChange={(e) => void act(user.id, { platformRole: e.target.value }, "Platform role updated")}
                   >
-                    {["user", "moderator", "manager", "admin", "support", "events"].map((role) => (
+                    {["user", "moderator", "manager", "admin", "support", "events", "founder"].map((role) => (
                       <option key={role} value={role}>
                         {role}
                       </option>
@@ -499,7 +499,7 @@ function StaffTab() {
                 app.toast("Staff role updated", "success");
               }}
             >
-              {["user", "moderator", "manager", "admin", "support", "events"].map((role) => (
+              {["user", "moderator", "manager", "admin", "support", "events", "founder"].map((role) => (
                 <option key={role} value={role}>
                   {role}
                 </option>
@@ -692,6 +692,7 @@ function ApplicationsTab() {
     }[];
   }>("/api/owner/applications");
   const [role, setRole] = useState("moderator");
+  const roleLabel = (value: string) => (value === "founder" ? "community founder" : value);
 
   return (
     <div className="owner-stack">
@@ -699,8 +700,7 @@ function ApplicationsTab() {
         <h2>Staff applications</h2>
         <label className="mini-field">
           Accept as
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            {["moderator", "manager", "admin", "support", "events"].map((r) => (
+          <select value={role} onChange={(e) => setRole(e.target.value)}>              {["moderator", "manager", "admin", "support", "events", "founder"].map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
@@ -724,7 +724,7 @@ function ApplicationsTab() {
               type="button"
               className="primary-btn small"
               onClick={async () => {
-                const note = window.prompt("Accept application. Note to the applicant:", `Welcome to the ZUNO ${role} team!`);
+                const note = window.prompt("Accept application. Note to the applicant:", `Welcome to the ZUNO ${roleLabel(role)} team!`);
                 if (note === null) return;
                 try {
                   await api(`/api/owner/applications/${application.id}`, {
@@ -739,7 +739,7 @@ function ApplicationsTab() {
                 }
               }}
             >
-              <Check size={13} /> Accept as {role}
+              <Check size={13} /> Accept as {roleLabel(role)}
             </button>
             <button
               type="button"

@@ -15,7 +15,7 @@ owner.use("*", async (c, next) => {
   await next();
 });
 
-const PLATFORM_ROLES = new Set(["user", "moderator", "manager", "admin", "support", "events"]);
+const PLATFORM_ROLES = new Set(["user", "moderator", "manager", "admin", "support", "events", "founder"]);
 const BADGE_ART_KEYS = new Set<string>(BADGE_ARTS);
 
 // Platform roles carry their matching badge automatically. The owner badge is never touched here.
@@ -25,6 +25,7 @@ const ROLE_BADGES: Record<string, string> = {
   admin: "admin",
   support: "support",
   events: "events",
+  founder: "founder",
 };
 
 async function syncRoleBadge(db: D1Database, userId: string, role: string, actorId: string | null) {

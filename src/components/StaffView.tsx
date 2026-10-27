@@ -40,6 +40,10 @@ const ROLES = [
     title: "Content Creator",
     blurb: "Make clips, art and announcements that pull people in.",
   },
+  {
+    title: "Community Founder",
+    blurb: "Grow a thriving ZUNO community and lead it as its founder.",
+  },
 ];
 
 export function StaffView() {
