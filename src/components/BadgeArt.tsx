@@ -14,7 +14,131 @@ export type BadgeArtKey =
   | "sprout"
   | "pulse"
   | "arcade"
-  | "spark";
+  | "spark"
+  | "vine-1"
+  | "vine-2"
+  | "vine-3"
+  | "vine-4"
+  | "vine-5"
+  | "vine-6";
+
+/**
+ * The ZUNO account-age vine, drawn in six growth stages. Stage 1 is a lone leaf
+ * on a young stem; by stage 6 the vine carries leaves, blossoms and a crown of
+ * sparks. The tier colour drives the whole drawing, so each age reads at a
+ * glance without any lettering.
+ */
+const VINE_STAGES: Record<string, number> = {
+  "vine-1": 1,
+  "vine-2": 2,
+  "vine-3": 3,
+  "vine-4": 4,
+  "vine-5": 5,
+  "vine-6": 6,
+};
+
+/** One leaf, drawn at the origin and placed along the stem by transform. */
+function VineLeaf({ x, y, angle, color, scale = 1 }: { x: number; y: number; angle: number; color: string; scale?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${angle}) scale(${scale})`}>
+      <path d="M0 0C4.3-.7 7.7 1.4 8.7 5.5 4.6 6.9.7 4.9 0 0Z" fill={color} />
+      <path d="M.6 .4C3.4 .6 5.6 2.2 7.2 4.6" stroke="#06101f" strokeOpacity="0.28" strokeWidth="0.9" fill="none" strokeLinecap="round" />
+    </g>
+  );
+}
+
+/** Five rounded petals around a bright core — a ZUNO bloom, not a gear. */
+function VineBloom({ cx, cy, r, color, id }: { cx: number; cy: number; r: number; color: string; id: string }) {
+  return (
+    <g>
+      {[0, 72, 144, 216, 288].map((angle) => (
+        <ellipse key={angle} cx={cx} cy={cy - r * 0.78} rx={r * 0.62} ry={r * 0.86} fill={`url(#${id})`} transform={`rotate(${angle} ${cx} ${cy})`} />
+      ))}
+      <circle cx={cx} cy={cy} r={r * 0.52} fill="#06101f" fillOpacity="0.42" />
+      <circle cx={cx} cy={cy} r={r * 0.34} fill="#ffffff" />
+      <circle cx={cx} cy={cy} r={r * 0.5} fill="none" stroke={color} strokeOpacity="0.55" strokeWidth="0.8" />
+    </g>
+  );
+}
+
+const VINE_STEMS: Record<number, string> = {
+  1: "M18.6 41.4c-.6-5.6 1.4-10.2 4.6-13.6",
+  2: "M18.2 41.6c-1-6.6 1-12.2 4.6-16",
+  3: "M17.8 41.8c-1.6-7.6.6-14 5-18",
+  4: "M17.4 42c-2-8.4.6-15.2 5.6-19.4",
+  5: "M17 42.2c-2.4-9 .8-16.4 6.2-20.6",
+  6: "M16.8 42.4c-2.6-9.4.8-17 6.4-21.2",
+};
+
+const VINE_LEAF_SPOTS: [number, number, number][] = [
+  [21.8, 32.6, 200],
+  [24.2, 28.2, 14],
+  [26.6, 23.8, 196],
+  [28.8, 19.6, 18],
+  [30.4, 15.4, 166],
+];
+
+function VineArt({ stage, color }: { stage: number; color: string }) {
+  const leaves = Math.min(VINE_LEAF_SPOTS.length, stage + 1);
+  const tip = stage >= 6 ? [29.2, 11] : stage >= 4 ? [28.6, 12.4] : [28.2, 13.6];
+  const stemWidth = stage >= 5 ? 3.9 : stage >= 3 ? 3.5 : 3;
+  const gradId = `ba-v${stage}`;
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${gradId}-stem`} x1="16" y1="42" x2="30" y2="12" gradientUnits="userSpaceOnUse">
+          <stop stopColor={color} />
+          <stop offset="1" stopColor="#ffffff" />
+        </linearGradient>
+        <radialGradient id={`${gradId}-petal`} cx="50%" cy="30%" r="70%">
+          <stop stopColor="#ffffff" />
+          <stop offset="1" stopColor={color} />
+        </radialGradient>
+        <linearGradient id={`${gradId}-bud`} x1="26" y1="10" x2="32" y2="20" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" />
+          <stop offset="1" stopColor={color} />
+        </linearGradient>
+      </defs>
+      <circle cx="24" cy="24" r="19.4" fill="#06101f" />
+      <circle cx="24" cy="24" r="13" fill={color} fillOpacity={stage >= 5 ? "0.18" : "0.1"} />
+      <circle cx="24" cy="24" r="19.4" fill="none" stroke={color} strokeOpacity="0.5" strokeWidth="1.5" />
+      {/* the stem lengthens and thickens with the account */}
+      <path
+        d={VINE_STEMS[stage]}
+        fill="none"
+        stroke={`url(#${gradId}-stem)`}
+        strokeWidth={stemWidth}
+        strokeLinecap="round"
+      />
+      {VINE_LEAF_SPOTS.slice(0, leaves).map(([x, y, angle]) => (
+        <VineLeaf key={`${x}-${y}`} x={x} y={y} angle={angle} color={color} scale={stage >= 4 ? 1.12 : 0.98} />
+      ))}
+      {stage >= 3 ? (
+        <VineBloom cx={tip[0]} cy={tip[1]} r={stage >= 5 ? 4.3 : 3.7} color={color} id={`${gradId}-petal`} />
+      ) : stage === 2 ? (
+        <>
+          <path
+            d={`M${tip[0]} ${tip[1] - 3.6}c3 1.5 4.8 4.2 4.8 7.4 0 2.3-1.6 4-3.7 4-2.7 0-4.4-2.1-4.4-4.8 0-2.6 1.2-5 3.3-6.6Z`}
+            fill={`url(#${gradId}-bud)`}
+          />
+          <path d={`M${tip[0]} ${tip[1] - 1.2}c1.3 1.6 2 3.6 2 5.8`} stroke="#06101f" strokeOpacity="0.3" strokeWidth="1" fill="none" strokeLinecap="round" />
+        </>
+      ) : (
+        // A brand-new account is only a shoot: the tip has not budded yet.
+        <VineLeaf x={tip[0] - 1.4} y={tip[1] + 4.4} angle={-46} color={color} scale={1.15} />
+      )}
+      {stage >= 5 && <VineBloom cx={35.2} cy={20.6} r={2.6} color={color} id={`${gradId}-petal`} />}
+      {stage >= 6 && (
+        <>
+          <circle cx="24" cy="24" r="21.4" fill="none" stroke={color} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="2 4" />
+          <path d="M39 5.6 40.1 8.9l3.3 1.1-3.3 1.1-1.1 3.3-1.1-3.3-3.3-1.1 3.3-1.1L39 5.6Z" fill="#eaffff" />
+          <circle cx="14.6" cy="9.4" r="1.5" fill={color} />
+          <circle cx="41.4" cy="31.6" r="1.3" fill={color} fillOpacity="0.8" />
+        </>
+      )}
+    </>
+  );
+}
 
 /**
  * ZUNO's original badge artwork. Every shape is drawn from scratch for ZUNO —
@@ -265,6 +389,9 @@ export function BadgeArt({ art, color, size = 24 }: { art?: string | null; color
         </>
       )}
 
+      {VINE_STAGES[key] ? <VineArt stage={VINE_STAGES[key]} color={color} /> : null}
+
+
       {key === "spark" && (
         <>
           <defs>
@@ -288,25 +415,34 @@ export function BadgeTile({
   size = 74,
   label = true,
 }: {
-  badge: Pick<Badge, "name" | "color" | "art" | "unique">;
+  badge: Pick<Badge, "name" | "color" | "art" | "unique"> & { ageLabel?: string; accountAge?: boolean };
   size?: number;
   label?: boolean;
 }) {
+  const isAge = badge.accountAge === true;
   return (
-    <span className="badge-tile-wrap">
+    <span className={cls("badge-tile-wrap", isAge && "age-wrap")}>
       <span
-        className={cls("badge-tile", badge.unique && "unique")}
+        className={cls("badge-tile", badge.unique && "unique", isAge && "age")}
         style={{
           width: size,
           height: size,
           ["--badge-color" as string]: badge.color,
         }}
-        title={badge.unique ? `${badge.name} · 1 of 1` : badge.name}
+        title={
+          isAge
+            ? `Account age · ${badge.name} · ${badge.ageLabel ?? ""}`.trim()
+            : badge.unique
+              ? `${badge.name} · 1 of 1`
+              : badge.name
+        }
       >
-        <BadgeArt art={badge.art} color={badge.color} size={Math.round(size * 0.56)} />
+        <BadgeArt art={badge.art} color={badge.color} size={Math.round(size * (isAge ? 0.66 : 0.56))} />
         {badge.unique && <em className="badge-unique">1 OF 1</em>}
       </span>
-      {label && <span className="badge-tile-label">{badge.name}</span>}
+      {label && isAge && <span className="badge-tile-cap">Account age</span>}
+      {label && <span className={cls("badge-tile-label", isAge && "age-label")}>{badge.name}</span>}
+      {label && isAge && badge.ageLabel && <span className="badge-tile-since">{badge.ageLabel}</span>}
     </span>
   );
 }

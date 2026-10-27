@@ -834,6 +834,12 @@ const BADGE_ART_OPTIONS = [
   ["pulse", "Pulse"],
   ["arcade", "Arcade"],
   ["spark", "Spark"],
+  ["vine-1", "Account age vine — sprout"],
+  ["vine-2", "Account age vine — bud"],
+  ["vine-3", "Account age vine — blossom"],
+  ["vine-4", "Account age vine — evergreen"],
+  ["vine-5", "Account age vine — ironvine"],
+  ["vine-6", "Account age vine — neon"],
 ] as const;
 
 function BadgesTab() {

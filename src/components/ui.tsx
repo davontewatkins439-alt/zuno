@@ -119,7 +119,13 @@ export function BadgeChip({ badge, compact = false }: { badge: Badge; compact?: 
     <span
       className={cls("badge-chip", compact && "badge-compact")}
       style={{ ["--badge-color" as string]: badge.color }}
-      title={badge.unique ? `${badge.name} · 1 of 1` : badge.name}
+      title={
+        badge.accountAge
+          ? `Account age · ${badge.name} · ${badge.ageLabel ?? ""}`.trim()
+          : badge.unique
+            ? `${badge.name} · 1 of 1`
+            : badge.name
+      }
     >
       <BadgeGlyph badge={badge} />
       {!compact && <span>{badge.name}</span>}

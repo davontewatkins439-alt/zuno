@@ -243,6 +243,12 @@ export const BADGE_ARTS = [
   "pulse",
   "arcade",
   "spark",
+  "vine-1",
+  "vine-2",
+  "vine-3",
+  "vine-4",
+  "vine-5",
+  "vine-6",
 ] as const;
 
 const SYSTEM_BADGE_ART: Record<string, string> = {

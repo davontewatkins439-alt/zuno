@@ -123,6 +123,9 @@ export interface Badge {
   glyph: string;
   art?: string | null;
   unique?: boolean;
+  /** Derived account-age badge: the tier name plus how long the account has existed. */
+  ageLabel?: string;
+  accountAge?: boolean;
 }
 
 export interface User {
