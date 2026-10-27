@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  Compass,
   Crown,
   Hash,
   Inbox,
@@ -105,9 +104,6 @@ function HomeSidebar() {
           <button type="button" onClick={() => openModal({ type: "notifications" })}>
             <Bell size={17} /> <span>Notifications</span>
             {unreadTotal > 0 && <em className="nav-badge">{unreadTotal > 9 ? "9+" : unreadTotal}</em>}
-          </button>
-          <button type="button" className={cls(route.name === "discover" && "active")} onClick={() => navigate("/discover")}>
-            <Compass size={17} /> <span>Discover</span>
           </button>
           <button
             type="button"
