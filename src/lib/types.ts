@@ -83,6 +83,39 @@ export interface Nameplate {
   favorite: boolean;
 }
 
+export interface BundlePiece {
+  id: string;
+  name: string;
+  rarity: string;
+  unlock: string;
+  owned: boolean;
+  equippable: boolean;
+  equipped: boolean;
+  wornBy: number;
+}
+
+export interface NameplateBundle {
+  id: string;
+  name: string;
+  description: string | null;
+  rarity: string;
+  unlock: string;
+  unlockHint: string;
+  priceCents: number;
+  compareCents: number;
+  discount: number;
+  limited: boolean;
+  endsAt: number | null;
+  releasedAt: number;
+  isNew: boolean;
+  favorite: boolean;
+  claimable: boolean;
+  claimed: boolean;
+  ownedCount: number;
+  total: number;
+  pieces: BundlePiece[];
+}
+
 export interface Badge {
   slug: string;
   name: string;

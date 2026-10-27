@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { hashPassword } from "./auth";
 import { now } from "./lib";
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
@@ -102,6 +102,19 @@ const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS user_nameplates (user_id TEXT NOT NULL, nameplate_id TEXT NOT NULL, granted_by TEXT, granted_at INTEGER NOT NULL, PRIMARY KEY (user_id, nameplate_id))",
   "CREATE TABLE IF NOT EXISTS nameplate_favorites (user_id TEXT NOT NULL, nameplate_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (user_id, nameplate_id))",
   "CREATE INDEX IF NOT EXISTS idx_nameplate_favorites_user ON nameplate_favorites(user_id)",
+  // ---- ZUNO cosmetic bundles -------------------------------------------
+  // A bundle is a themed pack of plates. Nothing is bought here: a bundle is
+  // included with ZUNO PLUS (or ownership), and claiming it copies its plates
+  // into user_nameplates so they stay usable even if PLUS lapses later.
+  `CREATE TABLE IF NOT EXISTS nameplate_bundles (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+    rarity TEXT NOT NULL DEFAULT 'premium', unlock TEXT NOT NULL DEFAULT 'plus',
+    price_cents INTEGER NOT NULL DEFAULT 0, compare_cents INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1, sort INTEGER NOT NULL DEFAULT 0,
+    released_at INTEGER NOT NULL DEFAULT 0, available_until INTEGER
+  )`,
+  "CREATE TABLE IF NOT EXISTS nameplate_bundle_items (bundle_id TEXT NOT NULL, nameplate_id TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (bundle_id, nameplate_id))",
+  "CREATE TABLE IF NOT EXISTS nameplate_bundle_favorites (user_id TEXT NOT NULL, bundle_id TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (user_id, bundle_id))",
   "CREATE INDEX IF NOT EXISTS idx_server_boosts_server ON server_boosts(server_id)",
 ];
 
@@ -157,6 +170,7 @@ export async function ensureSchema(env: Env): Promise<void> {
     await ensureOwnerPlusOnce(env);
     await ensureQuestsOnce(env);
     await ensureNameplatesOnce(env);
+    await ensureBundlesOnce(env);
     return;
   }
   for (const sql of SCHEMA) {
@@ -190,6 +204,7 @@ export async function ensureSchema(env: Env): Promise<void> {
   await ensureOwnerPlusOnce(env);
   await ensureQuestsOnce(env);
   await ensureNameplatesOnce(env);
+  await ensureBundlesOnce(env);
   if (env.DEMO_SEED === "true") await seedDemo(env).catch((err) => console.error("seed failed", err));
 }
 
@@ -472,6 +487,122 @@ async function ensureNameplatesOnce(env: Env): Promise<void> {
     "UPDATE users SET nameplate = 'zuno-1of1' WHERE is_owner = 1 AND (nameplate IS NULL OR nameplate = '')",
   ).run();
   await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v3', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+}
+
+/* ------------------------------------------------------------------ */
+/* Bundle wave — the ZUNO cosmetics shop.                              */
+/* ------------------------------------------------------------------ */
+
+async function ensureBundlesOnce(env: Env): Promise<void> {
+  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'nameplates_seed_v4'")
+    .first<{ value: string }>()
+    .catch(() => null);
+  if (done) return;
+  const t = now();
+  const day = 86_400_000;
+
+  // Second member wave. Owners wear all of it for free; members get it through
+  // ZUNO PLUS or by claiming a bundle.
+  const memberPlates: [string, string, string, string, string, number][] = [
+    ["polar-drift", "Polar Drift", "Frozen current breaking into daylight.", "premium", "plus", 29],
+    ["ember-wake", "Ember Wake", "Heat haze over a burnt horizon.", "premium", "plus", 28],
+    ["velvet-noise", "Velvet Noise", "Rose and violet crushed into static.", "standard", "plus", 27],
+    ["steel-lattice", "Steel Lattice", "Cold structural steel, open to everyone.", "standard", "free", 26],
+    ["aurora-line", "Aurora Line", "A green-to-cyan ribbon of northern light.", "premium", "plus", 25],
+    ["midnight-market", "Midnight Market", "Lantern light down a neon alley.", "premium", "plus", 24],
+    ["signal-void", "Signal Void", "A dead channel that still hums.", "standard", "free", 23],
+    ["honey-static", "Honey Static", "Warm amber interference.", "standard", "plus", 22],
+    ["quartz-fault", "Quartz Fault", "Pink quartz split across cyan.", "premium", "plus", 21],
+    ["lumen-shaft", "Lumen Shaft", "Pure white light through circuit glass.", "standard", "free", 20],
+    ["deep-orbit", "Deep Orbit", "High-altitude blue with a pale moon.", "premium", "plus", 19],
+    ["witch-hex", "Witch Hex", "Violet hexfire with a lime edge.", "premium", "plus", 18],
+    ["cinder-tide", "Cinder Tide", "Embers carried out on a dark tide.", "standard", "plus", 17],
+    ["glasswing", "Glasswing", "Mint and lilac winglight.", "premium", "plus", 16],
+    ["blue-hour", "Blue Hour", "The minute after sunset, free for everyone.", "standard", "free", 15],
+    ["nocturne", "Nocturne", "A slow purple broadcast after midnight.", "standard", "plus", 14],
+    ["static-saint", "Static Saint", "White noise wearing a halo.", "premium", "plus", 13],
+    ["harbour-light", "Harbour Light", "Teal water and a warm dock lamp.", "standard", "plus", 12],
+    ["firefly", "Firefly", "Lime sparks in a summer field.", "standard", "free", 11],
+    ["frost-circuit", "Frost Circuit", "Frosted traces running blue.", "standard", "plus", 10],
+    ["dusk-parade", "Dusk Parade", "Orange dusk meeting a violet parade.", "premium", "plus", 9],
+    ["chrome-orchard", "Chrome Orchard", "Silver fruit under a mint moon.", "premium", "plus", 8],
+  ];
+  for (const [id, name, description, rarity, unlock, sort] of memberPlates) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort, released_at, available_until) VALUES (?, ?, ?, ?, ?, NULL, 1, ?, ?, NULL) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, rarity, unlock, sort, t)
+      .run();
+  }
+
+  const memberDrop: [string, string, string, string, number, number][] = [
+    ["veil-of-ash", "Veil of Ash", "Ash-grey carbon with an ember seam.", "premium", 44, t + 8 * day],
+    ["candy-comet", "Candy Comet", "Sugar pink streaking through gold.", "premium", 43, t + 6 * day],
+    ["tide-of-gold", "Tide of Gold", "Liquid gold pulling into deep navy.", "legendary", 42, t + 10 * day],
+  ];
+  for (const [id, name, description, rarity, sort, ends] of memberDrop) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort, released_at, available_until) VALUES (?, ?, ?, ?, 'plus', 'shimmer', 1, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, rarity, sort, t, ends)
+      .run();
+  }
+
+  const ownerPlates: [string, string, string, number][] = [
+    ["imperial-onyx", "Imperial Onyx", "Black stone under an ivory crown.", 92],
+    ["gilded-obsidian", "Gilded Obsidian", "Obsidian split open by bronze.", 91],
+    ["crown-of-static", "Crown of Static", "A dead-signal halo for the owner channel.", 90],
+    ["platinum-sigil", "Platinum Sigil", "ZUNO pressed in platinum.", 89],
+    ["sovereign-prism", "Sovereign Prism", "Liquid chrome bending violet.", 88],
+    ["midnight-throne", "Midnight Throne", "The mascot on a violet throne.", 87],
+    ["kaws-standard", "KAWS Standard", "Owner edition: the figure in burnt orange.", 86],
+    ["kaws-chrome", "KAWS Chrome", "Owner edition: chrome figure, gold rim.", 85],
+    ["owners-cut", "Owner's Cut", "The director's cut — torn magenta.", 84],
+    ["the-architect", "The Architect", "The plate for the account that built the city.", 83],
+    ["one-of-one-noir", "One of One: Noir", "Noir halo, gold edge. One account.", 82],
+  ];
+  for (const [id, name, description, sort] of ownerPlates) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort, released_at, available_until) VALUES (?, ?, ?, 'legendary', 'owner', 'shimmer', 1, ?, ?, NULL) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, sort, t)
+      .run();
+  }
+
+  type BundleSeed = [string, string, string, string, string, number, number, number, number | null, string[]];
+  const bundles: BundleSeed[] = [
+    ["dark-moon-bundle", "4pc Dark Moon Bundle", "Four plates cut from the same moonless sky.", "premium", "plus", 2299, 3599, 60, null, ["lunar-static", "nocturne", "deep-orbit", "signal-void"]],
+    ["neon-rain-bundle", "3pc Neon Rain Bundle", "Violet downpour, aurora bleed and a city that never dims.", "premium", "plus", 1799, 2699, 58, null, ["neon-rain", "aurora-line", "city-lights"]],
+    ["solar-riot-bundle", "3pc Solar Riot Bundle", "Amber heat, embers and fireflies.", "premium", "plus", 1699, 2499, 56, null, ["solar-flare", "ember-wake", "firefly"]],
+    ["rose-filigree-bundle", "4pc Rose Filigree Bundle", "Velvet, quartz, glasswing and bloom — soft, then loud.", "premium", "plus", 1699, 2399, 54, null, ["velvet-noise", "quartz-fault", "glasswing", "static-bloom"]],
+    ["hexed-hours-bundle", "3pc Hexed Hours Bundle", "Witchfire, a static saint and a veil of ash.", "premium", "plus", 1599, 2299, 52, t + 8 * day, ["witch-hex", "static-saint", "veil-of-ash"]],
+    ["ice-vault-bundle", "3pc Ice Vault Bundle", "Frosted facets, polar light and blue traces.", "standard", "plus", 1299, 1899, 50, null, ["ice-vault", "polar-drift", "frost-circuit"]],
+    ["butterfly-waltz-bundle", "3pc Butterfly Waltz Bundle", "Warm light for the quiet hours.", "standard", "plus", 1299, 1799, 48, null, ["afterglow", "honey-static", "harbour-light"]],
+    ["deep-current-bundle", "4pc Deep Current Bundle", "Abyssal blue, cinder and harbour glow.", "premium", "plus", 1799, 2599, 46, null, ["deep-current", "cinder-tide", "harbour-light", "lumen-shaft"]],
+    ["chrome-orchard-bundle", "3pc Chrome Orchard Bundle", "Chrome fruit, market neon and a dusk parade.", "premium", "plus", 1999, 2899, 44, null, ["chrome-orchard", "midnight-market", "dusk-parade"]],
+    ["owner-crown-jewels", "4pc Crown Jewels Bundle", "The owner's crown work, cut four different ways.", "legendary", "owner", 0, 0, 100, null, ["onyx-crown", "imperial-onyx", "gilded-obsidian", "noir-sigil"]],
+    ["owner-liquid-chrome", "3pc Liquid Chrome Bundle", "Every liquid-metal plate on the platform.", "legendary", "owner", 0, 0, 99, null, ["chrome-liquid", "platinum-sigil", "sovereign-prism"]],
+    ["owner-kaws-bundle", "3pc KAWS Standard Bundle", "Owner edition figures — orange, chrome and cyan.", "legendary", "owner", 0, 0, 98, null, ["kaws-standard", "kaws-chrome", "the-architect"]],
+    ["owner-noir-sovereign", "3pc Noir Sovereign Bundle", "Black, gold and a dead-signal halo.", "legendary", "owner", 0, 0, 97, null, ["obsidian-halo", "crown-of-static", "one-of-one-noir"]],
+    ["owner-throne-room", "3pc Throne Room Bundle", "The mascot plates, reserved for the owner.", "legendary", "owner", 0, 0, 96, null, ["midnight-throne", "owners-cut", "the-founder"]],
+  ];
+  for (const [id, name, description, rarity, unlock, price, compare, sort, ends, pieces] of bundles) {
+    await env.DB.prepare(
+      `INSERT INTO nameplate_bundles (id, name, description, rarity, unlock, price_cents, compare_cents, active, sort, released_at, available_until)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
+    )
+      .bind(id, name, description, rarity, unlock, price, compare, sort, t, ends)
+      .run();
+    for (const [index, plate] of pieces.entries()) {
+      await env.DB.prepare(
+        "INSERT INTO nameplate_bundle_items (bundle_id, nameplate_id, position) VALUES (?, ?, ?) ON CONFLICT(bundle_id, nameplate_id) DO NOTHING",
+      )
+        .bind(id, plate, index)
+        .run();
+    }
+  }
+
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v4', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
 }
 
 /* ------------------------------------------------------------------ */
