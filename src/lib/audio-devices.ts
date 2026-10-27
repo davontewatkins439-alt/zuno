@@ -65,10 +65,34 @@ export function videoConstraints(): MediaTrackConstraints {
       : false;
   return {
     ...(prefs.cameraId ? { deviceId: { exact: prefs.cameraId } } : { facingMode: { ideal: "user" } }),
-    width: { ideal: portrait ? 720 : 1280 },
-    height: { ideal: portrait ? 1280 : 720 },
+    // Full HD at 30fps where the device can do it. `ideal` means a weaker phone
+    // steps down instead of failing to start the camera at all.
+    width: { ideal: portrait ? 1080 : 1920 },
+    height: { ideal: portrait ? 1920 : 1080 },
+    frameRate: { ideal: 30, max: 30 },
     aspectRatio: { ideal: portrait ? 9 / 16 : 16 / 9 },
   };
+}
+
+/**
+ * Ask the camera for continuous focus / exposure when the hardware exposes
+ * those modes, and mark the track as motion video so encoders favour frame
+ * rate over still-image detail.
+ */
+export async function tuneCameraTrack(track: MediaStreamTrack): Promise<void> {
+  if ("contentHint" in track) track.contentHint = "motion";
+  const capabilities = (track.getCapabilities?.() ?? {}) as Record<string, unknown>;
+  const advanced: Record<string, string>[] = [];
+  for (const key of ["focusMode", "exposureMode", "whiteBalanceMode"]) {
+    const values = capabilities[key];
+    if (Array.isArray(values) && values.includes("continuous")) advanced.push({ [key]: "continuous" });
+  }
+  if (!advanced.length) return;
+  try {
+    await track.applyConstraints({ advanced } as MediaTrackConstraints);
+  } catch {
+    // The device refused the hint; its default camera tuning still applies.
+  }
 }
 
 export interface DeviceList {

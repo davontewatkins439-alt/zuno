@@ -1,11 +1,16 @@
 import { api } from "./api";
-import { applyOutputDevice, audioConstraints, getAudioPrefs, videoConstraints } from "./audio-devices";
+import { applyOutputDevice, audioConstraints, getAudioPrefs, tuneCameraTrack, videoConstraints } from "./audio-devices";
 import type { VoiceState } from "./types";
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
 ];
+
+// Without an explicit ceiling browsers settle around 1 Mbps and faces turn to
+// mush. Camera lanes get 4 Mbps at 30fps, screen shares 6 Mbps.
+const CAMERA_MAX_BITRATE = 4_000_000;
+const SCREEN_MAX_BITRATE = 6_000_000;
 
 export interface VoiceParticipant extends VoiceState {}
 
@@ -108,6 +113,7 @@ export class VoiceClient {
       });
       const videoTracks = this.localStream.getVideoTracks();
       this.cameraStream = options.video && videoTracks.length ? new MediaStream(videoTracks) : null;
+      for (const track of videoTracks) void tuneCameraTrack(track);
     } catch (err) {
       this.channelId = null;
       this.emit({ error: "Microphone access was blocked. Allow the mic to join the call." });
@@ -158,6 +164,7 @@ export class VoiceClient {
 
     if (this.localStream) {
       for (const track of this.localStream.getTracks()) pc.addTrack(track, this.localStream);
+      this.tuneVideo(pc);
     }
     // Always negotiate an audio lane, even if the microphone was blocked, so the
     // other side can still be heard.
@@ -219,12 +226,36 @@ export class VoiceClient {
     return peer;
   }
 
+  /**
+   * Raise the encoder budget for every video lane on a connection. Sender
+   * parameters are only tunable once there is a local description, so this runs
+   * again after each negotiation.
+   */
+  private tuneVideo(pc: RTCPeerConnection): void {
+    for (const sender of pc.getSenders()) {
+      const track = sender.track;
+      if (!track || track.kind !== "video") continue;
+      const sharing = this.screenStream?.getVideoTracks().some((entry) => entry.id === track.id) ?? false;
+      if (!sharing && "contentHint" in track) track.contentHint = "motion";
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+      for (const encoding of params.encodings) {
+        encoding.maxBitrate = sharing ? SCREEN_MAX_BITRATE : CAMERA_MAX_BITRATE;
+        encoding.scaleResolutionDownBy = 1;
+        if (!sharing) encoding.maxFramerate = 30;
+      }
+      params.degradationPreference = "balanced";
+      void sender.setParameters(params).catch(() => undefined);
+    }
+  }
+
   private async createOffer(userId: string) {
     const peer = this.ensurePeer(userId, true);
     try {
       peer.makingOffer = true;
       const offer = await peer.pc.createOffer();
       await peer.pc.setLocalDescription(offer);
+      this.tuneVideo(peer.pc);
       await api("/api/voice/signal", {
         method: "POST",
         body: { channelId: this.channelId, to: userId, type: "offer", payload: offer },
@@ -270,6 +301,7 @@ export class VoiceClient {
       peer.pendingIce = [];
       const answer = await peer.pc.createAnswer();
       await peer.pc.setLocalDescription(answer);
+      this.tuneVideo(peer.pc);
       await api("/api/voice/signal", {
         method: "POST",
         body: { channelId: this.channelId, to: payload.from, type: "answer", payload: answer },
@@ -459,8 +491,10 @@ export class VoiceClient {
     try {
       const cam = await navigator.mediaDevices.getUserMedia({ video: videoConstraints() });
       this.cameraStream = cam;
+      for (const track of cam.getVideoTracks()) void tuneCameraTrack(track);
       for (const peer of this.peers.values()) {
         for (const track of cam.getVideoTracks()) peer.pc.addTrack(track, cam);
+        this.tuneVideo(peer.pc);
       }
       if (this.channelId) {
         await api(`/api/voice/${this.channelId}/state`, { method: "PATCH", body: { video: true } }).catch(() => undefined);
