@@ -152,13 +152,18 @@ calls.post("/calls/:id/answer", async (c) => {
   const me = c.get("user");
   const row = await loadCall(db, c.req.param("id"));
   if (!row) return c.json({ error: "That call has ended." }, 404);
-  if (row.status !== "ringing") return c.json({ error: "That call is no longer ringing." }, 409);
   if (row.caller_id === me.id) return bad(c, "You cannot answer your own call.");
+  if (!(await memberOf(db, row.channel_id, me.id))) return c.json({ error: "You are not part of that call." }, 403);
+  // Answering joins the voice room first, and joining promotes a ringing call to
+  // `active` (see activateRingingCall). So this request can legitimately arrive
+  // after the status flipped — return the live call instead of a 409, which made
+  // the client tear down the call it had just connected.
+  if (row.status === "active") return c.json({ call: await callPayload(db, row) });
+  if (row.status !== "ringing") return c.json({ error: "That call is no longer ringing." }, 409);
   if (row.created_at < now() - RING_TTL) {
     await db.prepare("UPDATE calls SET status = 'missed', ended_at = ? WHERE id = ?").bind(now(), row.id).run();
     return c.json({ error: "That call was missed." }, 409);
   }
-  if (!(await memberOf(db, row.channel_id, me.id))) return c.json({ error: "You are not part of that call." }, 403);
   await db.prepare("UPDATE calls SET status = 'active', answered_at = ? WHERE id = ?").bind(now(), row.id).run();
   const updated = (await loadCall(db, row.id))!;
   const payload = await callPayload(db, updated);
