@@ -1,4 +1,5 @@
 
+import { ageLabel, ageTierFor, isAgeSlug } from "../shared/age";
 import { accentFor, effectiveStatus, now, publicUser } from "./lib";
 import type { ChannelRow, ServerRow } from "./perms";
 import { has, P } from "./perms";
@@ -16,63 +17,19 @@ export interface Badge {
   accountAge?: boolean;
 }
 
-/**
- * ZUNO account age.
- *
- * Nothing is granted or stored: the tier is derived from `users.created_at`
- * every time a user is serialised, so it climbs on its own and can never be
- * handed to somebody early or taken away. Six tiers, each with its own stage of
- * the original ZUNO vine artwork.
- */
-const AGE_DAY = 86_400_000;
-
-export const AGE_TIERS: { slug: string; name: string; color: string; art: string; days: number }[] = [
-  { slug: "age_sprout", name: "SPROUT", color: "#a3e635", art: "vine-1", days: 0 },
-  { slug: "age_bud", name: "BUD", color: "#4ade80", art: "vine-2", days: 30 },
-  { slug: "age_blossom", name: "BLOSSOM", color: "#22d3ee", art: "vine-3", days: 180 },
-  { slug: "age_evergreen", name: "EVERGREEN", color: "#38bdf8", art: "vine-4", days: 365 },
-  { slug: "age_ironvine", name: "IRONVINE", color: "#8b5cf6", art: "vine-5", days: 730 },
-  { slug: "age_neonvine", name: "NEON VINE", color: "#5fe3ff", art: "vine-6", days: 1825 },
-];
-
 export function isAgeBadge(badge: { slug: string; accountAge?: boolean }): boolean {
-  return badge.accountAge === true || AGE_TIERS.some((tier) => tier.slug === badge.slug);
+  return badge.accountAge === true || isAgeSlug(badge.slug);
 }
 
-/** Whole days the account has existed; 0 when the timestamp is unusable. */
-export function accountAgeDays(createdAt: unknown): number {
+/**
+ * The age badge this account wears right now, or null while it is under a year
+ * old. Nothing is stored: the rung comes straight from the join date.
+ */
+export function accountAgeBadge(createdAt: unknown): Badge | null {
   const created = Number(createdAt);
-  if (!Number.isFinite(created) || created <= 0) return 0;
-  return Math.max(0, Math.floor((Date.now() - created) / AGE_DAY));
-}
-
-/** "Joined today" / "12 days" / "11 months" / "4 years, 1 month". */
-export function formatAccountAge(createdAt: unknown): string {
-  const created = Number(createdAt);
-  if (!Number.isFinite(created) || created <= 0) return "New here";
-  const days = accountAgeDays(created);
-  if (days < 1) return "Joined today";
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"}`;
-  const from = new Date(created);
-  const to = new Date();
-  let months =
-    (to.getUTCFullYear() - from.getUTCFullYear()) * 12 + (to.getUTCMonth() - from.getUTCMonth());
-  if (to.getUTCDate() < from.getUTCDate()) months -= 1;
-  months = Math.max(1, months);
-  const years = Math.floor(months / 12);
-  const rest = months % 12;
-  const parts: string[] = [];
-  if (years) parts.push(`${years} year${years === 1 ? "" : "s"}`);
-  if (rest) parts.push(`${rest} month${rest === 1 ? "" : "s"}`);
-  if (!parts.length) parts.push("1 month");
-  return parts.join(", ");
-}
-
-/** The tier this account wears right now. */
-export function accountAgeBadge(createdAt: unknown): Badge {
-  const days = accountAgeDays(createdAt);
-  let tier = AGE_TIERS[0];
-  for (const candidate of AGE_TIERS) if (days >= candidate.days) tier = candidate;
+  if (!Number.isFinite(created) || created <= 0) return null;
+  const tier = ageTierFor(created);
+  if (!tier) return null;
   return {
     slug: tier.slug,
     name: tier.name,
@@ -80,7 +37,7 @@ export function accountAgeBadge(createdAt: unknown): Badge {
     glyph: "sprout",
     art: tier.art,
     unique: false,
-    ageLabel: formatAccountAge(createdAt),
+    ageLabel: ageLabel(created),
     accountAge: true,
   };
 }
@@ -89,7 +46,8 @@ export function accountAgeBadge(createdAt: unknown): Badge {
 function withAgeBadge(list: Badge[], createdAt: unknown): Badge[] {
   const existing = list.find(isAgeBadge);
   const rest = list.filter((badge) => !isAgeBadge(badge));
-  const age = Number(createdAt) > 0 ? accountAgeBadge(createdAt) : existing;
+  const created = Number(createdAt);
+  const age = Number.isFinite(created) && created > 0 ? accountAgeBadge(created) : (existing ?? null);
   return age ? [...rest, age] : rest;
 }
 

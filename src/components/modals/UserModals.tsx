@@ -20,6 +20,7 @@ import { cls, formatShort, has, P, PLUS_DECORATIONS, PLUS_THEMES } from "../../l
 import { plateClass } from "../../lib/nameplates";
 import { PlateArt } from "../PlateArt";
 import { Avatar, BadgeRow, BadgeTile, IconButton, Modal, Verified } from "../ui";
+import { AccountAgePanel } from "../AccountAge";
 import { VoiceSettings } from "./VoiceSettings";
 
 type Tab = "profile" | "plus" | "appearance" | "voice" | "account";
@@ -469,6 +470,9 @@ function AccountSettings() {
         )}
       </div>
 
+      <h4 className="settings-heading">Account age</h4>
+      <AccountAgePanel createdAt={user.createdAt} compact />
+
       {user.isOwner && (
         <div className="owner-note">
           <Crown size={16} />
@@ -590,6 +594,8 @@ export function ProfileModal() {
           ))}
         </div>
       )}
+
+      <AccountAgePanel createdAt={user.createdAt} displayName={user.displayName || user.username} />
 
       <div className="profile-columns">
         <div className="profile-main">

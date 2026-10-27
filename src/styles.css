@@ -475,6 +475,118 @@ svg { flex-shrink: 0; }
   font-weight: 600;
   color: var(--text-mute);
 }
+
+/* ============================== account age ============================== */
+
+.age-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(170deg, rgba(11, 20, 36, 0.72), rgba(5, 10, 19, 0.72));
+}
+.age-panel.compact { padding: 14px 12px 12px; }
+
+.age-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 14px 12px 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(90% 70% at 50% 0%, color-mix(in srgb, var(--badge-color, #8ea4c8) 18%, transparent), transparent 70%),
+    rgba(6, 12, 23, 0.72);
+}
+.age-card-cap {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-top: 4px;
+}
+.age-card-tier {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--badge-color, #8ea4c8) 62%, #ffffff);
+}
+.age-card-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-mute);
+  text-align: center;
+}
+
+.age-blurb {
+  margin: 0;
+  max-width: 460px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  text-align: center;
+}
+.age-blurb.dim { color: var(--text-mute); }
+
+.age-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.age-progress-head span { font-size: 12.5px; font-weight: 800; }
+.age-progress-head em { font-style: normal; font-size: 11px; color: var(--text-mute); }
+
+.age-ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.age-rung {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 6px 7px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(7, 13, 24, 0.6);
+  opacity: 0.5;
+  filter: saturate(0.55);
+  transition: opacity 0.18s ease, filter 0.18s ease, border-color 0.18s ease;
+}
+.age-rung.unlocked { opacity: 1; filter: none; }
+.age-rung.current {
+  border-color: color-mix(in srgb, var(--badge-color, #8ea4c8) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--badge-color, #8ea4c8) 22%, transparent) inset;
+}
+.age-rung-art { display: grid; place-items: center; }
+.age-rung strong {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--text-dim);
+}
+.age-rung.current strong { color: color-mix(in srgb, var(--badge-color, #8ea4c8) 70%, #ffffff); }
+.age-rung-req {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-mute);
+}
 .badge-unique {
   position: absolute;
   top: -7px;
