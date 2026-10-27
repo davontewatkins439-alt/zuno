@@ -151,6 +151,22 @@ async function ensureOwnerPlusOnce(env: Env): Promise<void> {
   await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('owner_plus_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
 }
 
+// The Developer role was retired. Databases that already seeded it keep the row
+// and the badge forever unless they are cleaned up, so do it once here: any
+// account still on the role drops back to a normal user, the role's badge is
+// unassigned, and the badge disappears from the catalogue.
+async function ensureDeveloperRemovedOnce(env: Env): Promise<void> {
+  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'developer_removed_v1'")
+    .first<{ value: string }>()
+    .catch(() => null);
+  if (done) return;
+  await env.DB.prepare("UPDATE users SET platform_role = 'user' WHERE platform_role = 'developer'").run();
+  await env.DB.prepare("DELETE FROM user_badges WHERE badge_slug = 'developer'").run();
+  await env.DB.prepare("DELETE FROM badges WHERE slug = 'developer'").run();
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('developer_removed_v1', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    .run();
+}
+
 async function ensureBadgeArtOnce(env: Env): Promise<void> {
   const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'badges_art_v1'")
     .first<{ value: string }>()
@@ -173,6 +189,7 @@ export async function ensureSchema(env: Env): Promise<void> {
     await ensureBundlesOnce(env);
     await ensureHalloweenOnce(env);
     await ensureHalloweenTwoOnce(env);
+    await ensureDeveloperRemovedOnce(env);
     return;
   }
   for (const sql of SCHEMA) {
@@ -209,6 +226,7 @@ export async function ensureSchema(env: Env): Promise<void> {
   await ensureBundlesOnce(env);
   await ensureHalloweenOnce(env);
   await ensureHalloweenTwoOnce(env);
+  await ensureDeveloperRemovedOnce(env);
   if (env.DEMO_SEED === "true") await seedDemo(env).catch((err) => console.error("seed failed", err));
 }
 
@@ -233,7 +251,6 @@ const SYSTEM_BADGE_ART: Record<string, string> = {
   admin: "shield",
   manager: "bloom",
   moderator: "blade",
-  developer: "terminal",
   support: "pulse",
   events: "laurel",
   plus: "prism",
@@ -255,7 +272,6 @@ export async function seedBadges(env: Env): Promise<void> {
     ["admin", "ADMIN", "Platform administrator with broad oversight.", "#f87171", "shield", "shield", 0, 0, 0, 80],
     ["manager", "MANAGER", "Leads platform operations and staff.", "#f472b6", "layers", "bloom", 0, 0, 0, 75],
     ["moderator", "MODERATOR", "Keeps ZUNO communities safe.", "#34d399", "gavel", "blade", 0, 0, 0, 70],
-    ["developer", "DEVELOPER", "Builds and maintains ZUNO itself.", "#8b5cf6", "code", "terminal", 0, 0, 0, 65],
     ["support", "SUPPORT AGENT", "Helps members with questions and account problems.", "#38bdf8", "headset", "pulse", 0, 0, 0, 63],
     ["events", "EVENTS HOST", "Runs community events, watch parties and voice nights.", "#fb923c", "calendar", "laurel", 0, 0, 0, 62],
     ["plus", "ZUNO PLUS", "Active ZUNO PLUS member.", "#fbbf24", "sparkles", "prism", 0, 1, 1, 60],
@@ -848,9 +864,9 @@ async function seedDemo(env: Env): Promise<void> {
       bio: "Systems engineer for ZUNO. I break things so you don't have to.",
       accent: "#34d399",
       status: "dnd",
-      role: "developer",
+      role: "user",
       status_text: "in the code mines",
-      badges: ["developer", "early_supporter"],
+      badges: ["early_supporter"],
     },
     {
       id: "u_mira",

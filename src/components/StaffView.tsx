@@ -29,10 +29,6 @@ const ROLES = [
     blurb: "Help run the platform: accounts, servers, configuration and policy.",
   },
   {
-    title: "Developer",
-    blurb: "Build bots and tools that make ZUNO better for everyone.",
-  },
-  {
     title: "Support Agent",
     blurb: "Answer questions in help channels and untangle account issues.",
   },

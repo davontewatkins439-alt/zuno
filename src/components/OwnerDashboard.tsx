@@ -342,7 +342,7 @@ function UsersTab() {
                     disabled={busy === user.id}
                     onChange={(e) => void act(user.id, { platformRole: e.target.value }, "Platform role updated")}
                   >
-                    {["user", "moderator", "manager", "admin", "developer", "support", "events"].map((role) => (
+                    {["user", "moderator", "manager", "admin", "support", "events"].map((role) => (
                       <option key={role} value={role}>
                         {role}
                       </option>
@@ -499,7 +499,7 @@ function StaffTab() {
                 app.toast("Staff role updated", "success");
               }}
             >
-              {["user", "moderator", "manager", "admin", "developer", "support", "events"].map((role) => (
+              {["user", "moderator", "manager", "admin", "support", "events"].map((role) => (
                 <option key={role} value={role}>
                   {role}
                 </option>
@@ -700,7 +700,7 @@ function ApplicationsTab() {
         <label className="mini-field">
           Accept as
           <select value={role} onChange={(e) => setRole(e.target.value)}>
-            {["moderator", "manager", "admin", "developer", "support", "events"].map((r) => (
+            {["moderator", "manager", "admin", "support", "events"].map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>
