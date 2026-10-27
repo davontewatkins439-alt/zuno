@@ -1008,6 +1008,29 @@ svg { flex-shrink: 0; }
   border-radius: 9px;
 }
 .account-identity:hover { background: rgba(95, 227, 255, 0.06); }
+
+/* A nameplate stretches across the whole account block, not just the name, so
+   the avatar, name and custom status all sit on the plate artwork. */
+.account-identity.np {
+  position: relative;
+  padding: 6px 8px 6px 5px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-height: 52px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.account-identity.np:hover { border-color: rgba(255, 255, 255, 0.22); box-shadow: 0 6px 20px -10px rgba(0, 0, 0, 0.8); }
+.account-identity.np:hover { background: transparent; }
+.account-identity.np > *:not(.plate-art) { position: relative; z-index: 1; }
+.account-identity.np .account-name {
+  background: rgba(4, 9, 18, 0.42);
+  border-radius: 7px;
+  padding: 1px 7px;
+  max-width: 100%;
+}
+.account-identity.np .account-name .plate-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.account-identity.np .account-sub { color: #c3d2e6; }
+.account-identity.np .avatar { box-shadow: 0 0 0 2px rgba(4, 9, 18, 0.55); }
 .account-meta { display: flex; flex-direction: column; min-width: 0; }
 .account-name { font-size: 12.5px; font-weight: 700; display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .account-sub { font-size: 10.5px; color: var(--text-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }

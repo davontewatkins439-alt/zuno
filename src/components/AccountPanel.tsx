@@ -31,11 +31,15 @@ export function AccountPanel() {
 
   return (
     <div className="account-panel">
-      <button type="button" className="account-identity" onClick={() => void openProfile(user.id)}>
+      <button
+        type="button"
+        className={cls("account-identity", plateClass(user.nameplate))}
+        onClick={() => void openProfile(user.id)}
+      >
+        <PlateArt id={user.nameplate} />
         <Avatar user={user} size={36} showStatus decoration={user.plusDecoration} />
         <span className="account-meta">
-          <span className={cls("account-name", "plate-name", plateClass(user.nameplate))}>
-            <PlateArt id={user.nameplate} />
+          <span className="account-name">
             <span className="plate-label">{user.displayName}</span>
             {(user.isOwner || user.badges.some((b) => b.slug === "verified")) && <Verified />}
           </span>
