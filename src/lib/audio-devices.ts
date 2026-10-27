@@ -55,10 +55,19 @@ export function audioConstraints(): MediaTrackConstraints {
 
 export function videoConstraints(): MediaTrackConstraints {
   const prefs = getAudioPrefs();
+  // Phones default to whichever camera the browser feels like, which is often
+  // the rear one — pointing at the ceiling during a call. Ask for the selfie
+  // camera unless an explicit camera was chosen, and match the device's own
+  // orientation so portrait calls are not cropped into a letterbox strip.
+  const portrait =
+    typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(orientation: portrait)").matches
+      : false;
   return {
-    ...(prefs.cameraId ? { deviceId: { exact: prefs.cameraId } } : {}),
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
+    ...(prefs.cameraId ? { deviceId: { exact: prefs.cameraId } } : { facingMode: { ideal: "user" } }),
+    width: { ideal: portrait ? 720 : 1280 },
+    height: { ideal: portrait ? 1280 : 720 },
+    aspectRatio: { ideal: portrait ? 9 / 16 : 16 / 9 },
   };
 }
 

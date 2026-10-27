@@ -1,7 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Monitor, Phone, PhoneOff, Video, VideoOff, Volume2, VolumeX, Headphones } from "lucide-react";
+import {
+  Headphones,
+  Mic,
+  MicOff,
+  Monitor,
+  Phone,
+  PhoneOff,
+  RotateCw,
+  Video,
+  VideoOff,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useApp } from "../state";
 import type { User } from "../lib/types";
+import { cls } from "../lib/utils";
 import { Avatar } from "./ui";
 
 function VideoTile({
@@ -16,27 +29,79 @@ function VideoTile({
   self?: boolean;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [dims, setDims] = useState({ width: 0, height: 0 });
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  // Phones routinely send a sideways (or ceiling-facing) frame. The viewer can
+  // spin the tile until it is upright; the crop always follows the rotation.
+  const [rotate, setRotate] = useState(0);
 
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
     video.srcObject = stream;
+    const readSize = () => setDims({ width: video.videoWidth, height: video.videoHeight });
+    video.addEventListener("loadedmetadata", readSize);
+    video.addEventListener("resize", readSize);
     if (stream) void video.play().catch(() => undefined);
+    readSize();
     return () => {
+      video.removeEventListener("loadedmetadata", readSize);
+      video.removeEventListener("resize", readSize);
       video.srcObject = null;
     };
   }, [stream]);
 
+  useEffect(() => {
+    const element = boxRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect) setBox({ width: rect.width, height: rect.height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const quarter = rotate % 360;
+  const sideways = quarter === 90 || quarter === 270;
+  const portrait = dims.height > dims.width && dims.width > 0;
+  // Swap the drawing box when rotated a quarter turn so the frame still fills
+  // the tile instead of leaving cut-off corners.
+  const frameWidth = sideways ? box.height : box.width;
+  const frameHeight = sideways ? box.width : box.height;
+  const frameStyle: React.CSSProperties | undefined =
+    frameWidth > 0 && frameHeight > 0
+      ? {
+          width: frameWidth,
+          height: frameHeight,
+          left: "50%",
+          top: "50%",
+          transform: `translate(-50%, -50%) rotate(${quarter}deg)`,
+        }
+      : undefined;
+
   return (
-    <div className={self ? "call-tile self" : "call-tile"}>
+    <div ref={boxRef} className={cls("call-tile", self && "self", portrait && !sideways && "portrait")}>
       {stream ? (
-        <video ref={ref} autoPlay playsInline muted={muted} />
+        <video ref={ref} autoPlay playsInline muted={muted} style={frameStyle} />
       ) : (
         <div className="call-tile-fallback">
           <span className="call-initial">{label.slice(0, 1).toUpperCase()}</span>
         </div>
       )}
       <span className="call-tile-label">{label}</span>
+      {stream && !self ? (
+        <button
+          type="button"
+          className="call-tile-rotate"
+          onClick={() => setRotate((current) => (current + 90) % 360)}
+          title="Rotate their video"
+          aria-label={`Rotate ${label}'s video`}
+        >
+          <RotateCw size={13} />
+        </button>
+      ) : null}
     </div>
   );
 }

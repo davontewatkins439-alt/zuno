@@ -1193,7 +1193,30 @@ svg { flex-shrink: 0; }
 .call-tiles.video { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .call-tile { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; border: 1px solid rgba(95, 227, 255, 0.14); background: radial-gradient(140px 100px at 50% 15%, rgba(47, 124, 255, 0.22), rgba(3, 6, 12, 0.95)); }
 .call-tile.self { border-color: rgba(47, 124, 255, 0.4); }
-.call-tile video { width: 100%; height: 100%; object-fit: cover; display: block; background: #03060c; }
+.call-tile video { width: 100%; height: 100%; max-width: none; object-fit: cover; display: block; background: #03060c; }
+/* A phone sending portrait video gets a portrait tile, so nobody is cropped
+   down to a strip of ceiling. */
+.call-tile.portrait { aspect-ratio: 3 / 4; }
+.call-tile video { position: absolute; inset: 0; }
+.call-tile-rotate {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(3, 7, 14, 0.78);
+  color: #d6e6ff;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+.call-tile:hover .call-tile-rotate { opacity: 1; }
+.call-tile-rotate:hover { transform: scale(1.08); border-color: rgba(95, 227, 255, 0.5); }
 .call-tile-fallback { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #1a2c44, #0a1420); border: 1px solid rgba(95, 227, 255, 0.22); }
 .call-initial { font-size: 22px; font-weight: 800; color: #cfe9ff; }
 .call-tile-label { position: absolute; left: 8px; bottom: 8px; font-size: 10.5px; padding: 3px 7px; border-radius: 6px; background: rgba(3, 7, 14, 0.82); }
