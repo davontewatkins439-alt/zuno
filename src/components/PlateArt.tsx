@@ -41,6 +41,47 @@ export function PlateArt({ id, className }: { id: string | null | undefined; cla
   );
 }
 
+/**
+ * The owner signature: the ZUNO crown and the ZUNO wordmark drawn as one
+ * lockup, parked in the clear zone of the plate (roughly 40%-67% across).
+ *
+ * Every owner plate wears it because the avatar and display name always cover
+ * the left of a nameplate and the account buttons the right, so an emblem
+ * drawn dead-centre would be invisible.
+ */
+function OwnerMark({ b }: { b: string }) {
+  return (
+    <g>
+      <g transform="translate(145 30) scale(0.36) translate(-160 -26.5)">
+        <path
+          d="M122 38 L114 10 L140 26 L160 6 L180 26 L206 10 L198 38 Z"
+          fill={b}
+          opacity="0.92"
+          stroke="#04060c"
+          strokeOpacity="0.45"
+        />
+        <rect x="122" y="40" width="76" height="8" rx="3.5" fill={b} />
+        <g fill="#ffffff" opacity="0.8">
+          <circle cx="160" cy="18" r="2.6" />
+          <circle cx="132" cy="23" r="1.8" />
+          <circle cx="188" cy="23" r="1.8" />
+        </g>
+      </g>
+      <text
+        x="168"
+        y="37"
+        fill={b}
+        fontSize="15"
+        fontWeight="800"
+        letterSpacing="2.4"
+        fontFamily="Inter, system-ui, sans-serif"
+      >
+        ZUNO
+      </text>
+    </g>
+  );
+}
+
 function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: string; a: string; b: string }) {
   switch (scene) {
     case "circuit":
@@ -342,31 +383,24 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
           <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.22" />
           <path d="M70 60 Q 160 26 250 60 Z" fill="#090b12" />
           <path d="M70 60 Q 160 26 250 60" stroke={b} strokeWidth="1" fill="none" opacity="0.4" />
-          <g fill="#0c1018" stroke={b} strokeOpacity="0.32">
-            <rect x="112" y="18" width="14" height="22" rx="6" />
-            <rect x="194" y="18" width="14" height="22" rx="6" />
+          {/* The mascot sits left of the signature so the crown and wordmark
+              stay clear of the avatar and display name. */}
+          <g transform="translate(-80 0)" opacity="0.9">
+            <g fill="#0c1018" stroke={b} strokeOpacity="0.32">
+              <rect x="112" y="18" width="14" height="22" rx="6" />
+              <rect x="194" y="18" width="14" height="22" rx="6" />
+            </g>
+            <rect x="130" y="6" width="60" height="48" rx="19" fill="#0a0d14" stroke={b} strokeOpacity="0.5" />
+            <rect x="141" y="19" width="38" height="9" rx="4.5" fill={`url(#${gid})`} />
+            <rect x="144" y="21" width="11" height="3" rx="1.5" fill="#ffffff" opacity="0.5" />
+            <path d="M150 39 H170" stroke={b} strokeWidth="1.2" opacity="0.5" />
+            <g fill={b} opacity="0.7">
+              <rect x="88" y="16" width="2" height="2" rx="1" />
+              <rect x="238" y="24" width="2" height="2" rx="1" />
+              <rect x="64" y="34" width="1.6" height="1.6" rx="0.8" />
+            </g>
           </g>
-          <rect x="130" y="6" width="60" height="48" rx="19" fill="#0a0d14" stroke={b} strokeOpacity="0.5" />
-          <rect x="141" y="19" width="38" height="9" rx="4.5" fill={`url(#${gid})`} />
-          <rect x="144" y="21" width="11" height="3" rx="1.5" fill="#ffffff" opacity="0.5" />
-          <path d="M150 39 H170" stroke={b} strokeWidth="1.2" opacity="0.5" />
-          <g fill={b} opacity="0.7">
-            <rect x="88" y="16" width="2" height="2" rx="1" />
-            <rect x="238" y="24" width="2" height="2" rx="1" />
-            <rect x="64" y="34" width="1.6" height="1.6" rx="0.8" />
-          </g>
-          <text
-            x="256"
-            y="50"
-            fill={b}
-            opacity="0.75"
-            fontSize="7"
-            fontWeight="800"
-            letterSpacing="2.4"
-            fontFamily="Inter, system-ui, sans-serif"
-          >
-            ZUNO
-          </text>
+          <OwnerMark b={b} />
         </g>
       );
     case "crown":
@@ -374,19 +408,16 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
         <g>
           <rect width="320" height="60" fill="#05060b" />
           <rect width="320" height="60" fill={`url(#${sid})`} opacity="0.9" />
-          <path d="M122 38 L114 10 L140 26 L160 6 L180 26 L206 10 L198 38 Z" fill={`url(#${gid})`} stroke={b} strokeOpacity="0.65" />
-          <rect x="122" y="40" width="76" height="7" rx="3" fill={b} opacity="0.85" />
-          <g fill="#fff6d8" opacity="0.85">
-            <circle cx="160" cy="19" r="2.2" />
-            <circle cx="132" cy="24" r="1.5" />
-            <circle cx="188" cy="24" r="1.5" />
-            <circle cx="142" cy="43.5" r="1.4" />
-            <circle cx="178" cy="43.5" r="1.4" />
-          </g>
           <g stroke={b} strokeWidth="0.9" opacity="0.35">
             <path d="M0 30 H96" />
-            <path d="M224 30 H320" />
+            <path d="M268 30 H320" />
           </g>
+          <g fill="#fff6d8" opacity="0.7">
+            <circle cx="104" cy="16" r="1.4" />
+            <circle cx="92" cy="44" r="1.2" />
+            <circle cx="300" cy="14" r="1.3" />
+          </g>
+          <OwnerMark b={b} />
         </g>
       );
     case "halo":
@@ -395,24 +426,23 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
           <rect width="320" height="60" fill="#04060c" />
           <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.28" />
           <g fill="none" stroke={b}>
-            <ellipse cx="160" cy="30" rx="34" ry="30" opacity="0.75" strokeWidth="1.2" />
-            <ellipse cx="160" cy="30" rx="52" ry="46" opacity="0.4" strokeWidth="0.9" />
-            <ellipse cx="160" cy="30" rx="74" ry="64" opacity="0.22" strokeWidth="0.8" />
+            <ellipse cx="196" cy="30" rx="34" ry="30" opacity="0.6" strokeWidth="1.2" />
+            <ellipse cx="196" cy="30" rx="52" ry="46" opacity="0.34" strokeWidth="0.9" />
+            <ellipse cx="196" cy="30" rx="74" ry="64" opacity="0.2" strokeWidth="0.8" />
           </g>
-          <ellipse cx="160" cy="30" rx="18" ry="15" fill={b} opacity="0.18" />
-          <ellipse cx="160" cy="30" rx="8" ry="7" fill="#eafcff" opacity="0.7" />
+          <ellipse cx="196" cy="30" rx="18" ry="15" fill={b} opacity="0.16" />
           <g fill={b} opacity="0.55">
             {[
               [52, 14],
               [78, 44],
-              [244, 20],
-              [268, 40],
+              [268, 20],
+              [290, 40],
               [96, 30],
-              [226, 48],
             ].map(([x, y], i) => (
               <rect key={i} x={x} y={y} width="2" height="2" rx="1" />
             ))}
           </g>
+          <OwnerMark b={b} />
         </g>
       );
     case "chrome":
@@ -420,16 +450,17 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
         <g>
           <rect width="320" height="60" fill="#080a10" />
           <g>
-            <path d="M-10 52 C 60 8, 120 58, 180 22 S 280 6, 330 30 L330 60 L-10 60 Z" fill={`url(#${gid})`} opacity="0.7" />
-            <path d="M-10 48 C 60 12, 120 54, 180 26 S 280 12, 330 34" stroke="#ffffff" strokeWidth="1.4" fill="none" opacity="0.55" />
-            <path d="M-10 36 C 80 0, 130 44, 200 14 S 290 0, 330 18" stroke="#ffffff" strokeWidth="1" fill="none" opacity="0.3" />
+            <path d="M-10 52 C 60 8, 120 58, 180 22 S 280 6, 330 30 L330 60 L-10 60 Z" fill={`url(#${gid})`} opacity="0.62" />
+            <path d="M-10 48 C 60 12, 120 54, 180 26 S 280 12, 330 34" stroke="#ffffff" strokeWidth="1.4" fill="none" opacity="0.45" />
+            <path d="M-10 36 C 80 0, 130 44, 200 14 S 290 0, 330 18" stroke="#ffffff" strokeWidth="1" fill="none" opacity="0.26" />
           </g>
-          <g stroke="#dbe6f7" strokeWidth="0.8" opacity="0.22">
+          <g stroke="#dbe6f7" strokeWidth="0.8" opacity="0.2">
             <path d="M40 0 V60" />
             <path d="M120 0 V60" />
             <path d="M200 0 V60" />
             <path d="M280 0 V60" />
           </g>
+          <OwnerMark b={b} />
         </g>
       );
     case "glitch":
@@ -437,46 +468,36 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
         <g>
           <rect width="320" height="60" fill="#06080f" />
           <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.2" />
-          <g opacity="0.85">
-            <rect x="0" y="10" width="132" height="7" fill={b} opacity="0.55" />
-            <rect x="118" y="10" width="60" height="7" fill="#5fe3ff" opacity="0.35" />
-            <rect x="176" y="22" width="144" height="5" fill="#5fe3ff" opacity="0.4" />
-            <rect x="186" y="34" width="86" height="7" fill={b} opacity="0.5" />
-            <rect x="40" y="44" width="112" height="4" fill="#5fe3ff" opacity="0.3" />
+          <g opacity="0.75">
+            <rect x="0" y="8" width="104" height="6" fill={b} opacity="0.45" />
+            <rect x="94" y="8" width="56" height="6" fill="#5fe3ff" opacity="0.3" />
+            <rect x="196" y="52" width="124" height="5" fill="#5fe3ff" opacity="0.32" />
+            <rect x="232" y="6" width="72" height="6" fill={b} opacity="0.4" />
+            <rect x="40" y="48" width="92" height="4" fill="#5fe3ff" opacity="0.24" />
           </g>
           <g stroke="#ffffff" strokeWidth="0.6" opacity="0.12">
             {[6, 18, 30, 42, 54].map((y) => (
               <path key={y} d={`M0 ${y} H320`} />
             ))}
           </g>
-          <rect x="272" y="6" width="10" height="10" fill={b} opacity="0.5" />
+          <rect x="286" y="50" width="10" height="10" fill={b} opacity="0.45" />
+          <OwnerMark b={b} />
         </g>
       );
     case "sigil":
       return (
         <g>
           <rect width="320" height="60" fill="#030409" />
-          <g stroke={b} strokeOpacity="0.35" fill="none">
-            <rect x="72" y="12" width="176" height="36" rx="6" />
-            <path d="M72 30 H60" />
-            <path d="M248 30 H260" />
+          <g stroke={b} strokeOpacity="0.28" fill="none">
+            <rect x="132" y="14" width="120" height="32" rx="6" />
+            <path d="M132 30 H112" />
+            <path d="M252 30 H272" />
           </g>
-          <text
-            x="160"
-            y="38"
-            textAnchor="middle"
-            fill={b}
-            fontSize="21"
-            fontWeight="800"
-            letterSpacing="7"
-            fontFamily="Inter, system-ui, sans-serif"
-          >
-            ZUNO
-          </text>
-          <g fill={b} opacity="0.6">
-            <rect x="86" y="26" width="2" height="2" rx="1" />
-            <rect x="232" y="32" width="2" height="2" rx="1" />
+          <g fill={b} opacity="0.5">
+            <rect x="96" y="26" width="2" height="2" rx="1" />
+            <rect x="288" y="32" width="2" height="2" rx="1" />
           </g>
+          <OwnerMark b={b} />
         </g>
       );
     default:
