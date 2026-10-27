@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { hashPassword } from "./auth";
 import { now } from "./lib";
 
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
@@ -171,6 +171,7 @@ export async function ensureSchema(env: Env): Promise<void> {
     await ensureQuestsOnce(env);
     await ensureNameplatesOnce(env);
     await ensureBundlesOnce(env);
+    await ensureHalloweenOnce(env);
     return;
   }
   for (const sql of SCHEMA) {
@@ -205,6 +206,7 @@ export async function ensureSchema(env: Env): Promise<void> {
   await ensureQuestsOnce(env);
   await ensureNameplatesOnce(env);
   await ensureBundlesOnce(env);
+  await ensureHalloweenOnce(env);
   if (env.DEMO_SEED === "true") await seedDemo(env).catch((err) => console.error("seed failed", err));
 }
 
@@ -603,6 +605,92 @@ async function ensureBundlesOnce(env: Env): Promise<void> {
   }
 
   await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v4', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+}
+
+/* ------------------------------------------------------------------ */
+/* Halloween drop — seasonal plates and their two packs.               */
+/* ------------------------------------------------------------------ */
+
+async function ensureHalloweenOnce(env: Env): Promise<void> {
+  const done = await env.DB.prepare("SELECT value FROM meta WHERE key = 'nameplates_seed_v5'")
+    .first<{ value: string }>()
+    .catch(() => null);
+  if (done) return;
+  const t = now();
+  // Hard end date so the seasonal stock really does go away: 3 Nov 2026, 23:59
+  // UTC. Anything claimed before then stays in that member's collection.
+  const endsAt = Date.UTC(2026, 10, 3, 23, 59, 59);
+
+  const seasonal: [string, string, string, string, string, number][] = [
+    ["hollow-lantern", "Hollow Lantern", "Carved pumpkin light, cut for the drop.", "premium", "plus", 41],
+    ["midnight-bats", "Midnight Bats", "A moonful of bats over the midnight channel.", "premium", "plus", 40],
+    ["grave-signal", "Grave Signal", "A quiet sheet ghost on a dead broadcast.", "standard", "plus", 39],
+    ["cobweb-veil", "Cobweb Veil", "Silk and shadows in the corner of your name.", "standard", "plus", 38],
+    ["candy-storm", "Candy Storm", "Sugar, wrappers and a candy-corn comet.", "standard", "plus", 37],
+    ["ember-pumpkin", "Ember Pumpkin", "The free plate of the drop — every account can wear it.", "standard", "free", 36],
+  ];
+  for (const [id, name, description, rarity, unlock, sort] of seasonal) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort, released_at, available_until) VALUES (?, ?, ?, ?, ?, 'shimmer', 1, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, rarity, unlock, sort, t, endsAt)
+      .run();
+  }
+
+  const ownerSeasonal: [string, string, string, number][] = [
+    ["sovereign-hollow", "Sovereign Hollow", "The owner crown, lit like a carved lantern.", 81],
+    ["haunted-noir", "Haunted Noir", "Gold bats over the owner's dead channel.", 80],
+    ["owner-witchfire", "Owner Witchfire", "Hexfire silk, spun only for the owner.", 79],
+  ];
+  for (const [id, name, description, sort] of ownerSeasonal) {
+    await env.DB.prepare(
+      "INSERT INTO nameplates (id, name, description, rarity, unlock, animation, active, sort, released_at, available_until) VALUES (?, ?, ?, 'legendary', 'owner', 'shimmer', 1, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+    )
+      .bind(id, name, description, sort, t, endsAt)
+      .run();
+  }
+
+  const packs: [string, string, string, string, string, number, number, number, string[]][] = [
+    [
+      "halloween-bundle",
+      "5pc Halloween Bundle",
+      "Carved lanterns, cobwebs, bats and a sugar rush.",
+      "premium",
+      "plus",
+      1999,
+      2999,
+      62,
+      ["hollow-lantern", "midnight-bats", "grave-signal", "cobweb-veil", "candy-storm"],
+    ],
+    [
+      "owner-halloween-bundle",
+      "3pc Haunted Owner Bundle",
+      "The Halloween plates only the owner account can wear.",
+      "legendary",
+      "owner",
+      0,
+      0,
+      95,
+      ["sovereign-hollow", "haunted-noir", "owner-witchfire"],
+    ],
+  ];
+  for (const [id, name, description, rarity, unlock, price, compare, sort, pieces] of packs) {
+    await env.DB.prepare(
+      `INSERT INTO nameplate_bundles (id, name, description, rarity, unlock, price_cents, compare_cents, active, sort, released_at, available_until)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
+    )
+      .bind(id, name, description, rarity, unlock, price, compare, sort, t, endsAt)
+      .run();
+    for (const [index, plate] of pieces.entries()) {
+      await env.DB.prepare(
+        "INSERT INTO nameplate_bundle_items (bundle_id, nameplate_id, position) VALUES (?, ?, ?) ON CONFLICT(bundle_id, nameplate_id) DO NOTHING",
+      )
+        .bind(id, plate, index)
+        .run();
+    }
+  }
+
+  await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('nameplates_seed_v5', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
 }
 
 /* ------------------------------------------------------------------ */

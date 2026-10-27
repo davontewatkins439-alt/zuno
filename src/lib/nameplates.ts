@@ -30,7 +30,12 @@ export interface PlateArtSpec {
     | "halo"
     | "chrome"
     | "glitch"
-    | "sigil";
+    | "sigil"
+    | "pumpkin"
+    | "bats"
+    | "web"
+    | "ghost"
+    | "candy";
 }
 
 export const PLATE_ART: Record<string, PlateArtSpec> = {
@@ -75,6 +80,14 @@ export const PLATE_ART: Record<string, PlateArtSpec> = {
   "veil-of-ash": { a: "#4a4a55", b: "#ff7a3d", glow: "rgba(255,122,61,0.45)", scene: "carbon" },
   "candy-comet": { a: "#ff5fa8", b: "#ffe08a", glow: "rgba(255,95,168,0.5)", scene: "prism" },
   "tide-of-gold": { a: "#ffd76e", b: "#0e2a63", glow: "rgba(255,215,110,0.5)", scene: "tide" },
+  // Halloween drop. Seasonal plates, so they retire on the date stored in the
+  // database and anybody who already claimed one keeps it.
+  "ember-pumpkin": { a: "#1a0a08", b: "#ffb347", glow: "rgba(255,179,71,0.5)", scene: "pumpkin" },
+  "hollow-lantern": { a: "#1a0f08", b: "#ff8a3d", glow: "rgba(255,138,61,0.55)", scene: "pumpkin" },
+  "grave-signal": { a: "#0a0d18", b: "#c9d8f0", glow: "rgba(201,216,240,0.4)", scene: "ghost" },
+  "cobweb-veil": { a: "#0d0a1c", b: "#c0c9d6", glow: "rgba(192,201,214,0.35)", scene: "web" },
+  "candy-storm": { a: "#1a0a14", b: "#ffcf5c", glow: "rgba(255,207,92,0.45)", scene: "candy" },
+  "midnight-bats": { a: "#140b2a", b: "#a06bff", glow: "rgba(160,107,255,0.5)", scene: "bats" },
   // Owner-only tier. Matte black, gold and chrome — built to read as the top
   // of the ladder and never handed out by any unlock rule but ownership.
   "zuno-1of1": { a: "#08090f", b: "#ffd76e", glow: "rgba(255,199,60,0.55)", scene: "figure" },
@@ -95,6 +108,9 @@ export const PLATE_ART: Record<string, PlateArtSpec> = {
   "owners-cut": { a: "#05070d", b: "#ff2e88", glow: "rgba(255,46,136,0.5)", scene: "glitch" },
   "the-architect": { a: "#070910", b: "#5fe3ff", glow: "rgba(95,227,255,0.45)", scene: "sigil" },
   "one-of-one-noir": { a: "#030407", b: "#ffd76e", glow: "rgba(255,215,110,0.45)", scene: "halo" },
+  "sovereign-hollow": { a: "#05060b", b: "#ff8a3d", glow: "rgba(255,138,61,0.5)", scene: "crown" },
+  "haunted-noir": { a: "#04050a", b: "#ffd76e", glow: "rgba(255,215,110,0.4)", scene: "bats" },
+  "owner-witchfire": { a: "#05070d", b: "#a6ff3d", glow: "rgba(166,255,61,0.45)", scene: "web" },
 };
 
 export const NAMEPLATE_IDS = Object.keys(PLATE_ART);

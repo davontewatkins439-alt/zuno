@@ -4418,3 +4418,156 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
   .plates-search.compact { max-width: none; flex: 1; }
   .bundle-stage { height: 140px; }
 }
+
+/* ============================ plate motion ============================== */
+
+/* Every nameplate is alive: the scene breathes, sparks twinkle across it and a
+   soft highlight travels along the pill. All of it is CSS on top of the same
+   vector artwork, so nothing extra has to load. */
+.plate-art { overflow: hidden; }
+
+.pa-scene {
+  transform-box: view-box;
+  transform-origin: 160px 30px;
+  animation: pa-breathe 9s ease-in-out infinite alternate;
+}
+.pa-scene.scene-rain,
+.pa-scene.scene-flare,
+.pa-scene.scene-glow { animation: pa-pulse 5.5s ease-in-out infinite; }
+.pa-scene.scene-tide,
+.pa-scene.scene-moon,
+.pa-scene.scene-halo,
+.pa-scene.scene-ghost,
+.pa-scene.scene-bats { animation: pa-float 7s ease-in-out infinite alternate; }
+.pa-scene.scene-city,
+.pa-scene.scene-circuit,
+.pa-scene.scene-signal,
+.pa-scene.scene-carbon { animation: pa-slide 11s ease-in-out infinite alternate; }
+.pa-scene.scene-bloom,
+.pa-scene.scene-prism,
+.pa-scene.scene-hex,
+.pa-scene.scene-pumpkin,
+.pa-scene.scene-candy,
+.pa-scene.scene-web { animation: pa-sway 8s ease-in-out infinite alternate; }
+
+@keyframes pa-breathe { from { transform: scale(1.02); } to { transform: scale(1.07); } }
+@keyframes pa-pulse {
+  0%, 100% { transform: scale(1.03); opacity: 0.9; }
+  50% { transform: scale(1.09); opacity: 1; }
+}
+@keyframes pa-float {
+  from { transform: scale(1.04) translateY(2px); }
+  to { transform: scale(1.07) translateY(-2.5px); }
+}
+@keyframes pa-slide {
+  from { transform: scale(1.07) translateX(-5px); }
+  to { transform: scale(1.07) translateX(5px); }
+}
+@keyframes pa-sway {
+  from { transform: scale(1.06) rotate(-1.2deg); }
+  to { transform: scale(1.06) rotate(1.2deg); }
+}
+
+.pa-aura {
+  transform-box: view-box;
+  transform-origin: 206px 30px;
+  opacity: 0.2;
+  animation: pa-aura 6.5s ease-in-out infinite alternate;
+}
+@keyframes pa-aura {
+  from { opacity: 0.1; transform: scale(0.86); }
+  to { opacity: 0.42; transform: scale(1.16); }
+}
+
+.pa-spark { opacity: 0; animation: pa-twinkle 4.8s ease-in-out infinite; }
+@keyframes pa-twinkle {
+  0%, 100% { opacity: 0; }
+  35% { opacity: 0.95; }
+  62% { opacity: 0.15; }
+}
+
+.pa-sweep { animation: pa-sweep 9s ease-in-out infinite; }
+@keyframes pa-sweep {
+  0% { transform: translateX(0); }
+  58%, 100% { transform: translateX(430px); }
+}
+
+/* De-sync neighbouring cards so the whole grid is not pulsing in step. */
+.np-grid > :nth-child(2n) .pa-scene,
+.bundle-grid > :nth-child(2n) .pa-scene { animation-delay: -2.2s; }
+.np-grid > :nth-child(3n) .pa-scene,
+.bundle-grid > :nth-child(3n) .pa-scene { animation-delay: -4.1s; }
+.np-grid > :nth-child(2n) .pa-sweep,
+.bundle-grid > :nth-child(2n) .pa-sweep { animation-delay: -3s; }
+.np-grid > :nth-child(3n) .pa-sweep,
+.bundle-grid > :nth-child(3n) .pa-sweep { animation-delay: -6.4s; }
+
+/* The sheen travels above the artwork now that the art fills the pill. */
+.np::after { z-index: 2; }
+
+/* ---------------------------- halloween drop ---------------------------- */
+
+.np-ember-pumpkin { --np-a: #1a0a08; --np-b: #ffb347; }
+.np-hollow-lantern { --np-a: #1a0f08; --np-b: #ff8a3d; }
+.np-grave-signal { --np-a: #0a0d18; --np-b: #c9d8f0; }
+.np-cobweb-veil { --np-a: #0d0a1c; --np-b: #c0c9d6; }
+.np-candy-storm { --np-a: #1a0a14; --np-b: #ffcf5c; }
+.np-midnight-bats { --np-a: #140b2a; --np-b: #a06bff; }
+.np-sovereign-hollow { --np-a: #05060b; --np-b: #ff8a3d; }
+.np-haunted-noir { --np-a: #04050a; --np-b: #ffd76e; }
+.np-owner-witchfire { --np-a: #05070d; --np-b: #a6ff3d; }
+
+.halloween-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 138, 61, 0.34);
+  background:
+    radial-gradient(420px 140px at 8% 120%, rgba(255, 138, 61, 0.24), transparent 70%),
+    radial-gradient(360px 140px at 92% -20%, rgba(160, 107, 255, 0.22), transparent 70%),
+    linear-gradient(120deg, rgba(20, 12, 10, 0.96), rgba(9, 8, 16, 0.98));
+  overflow: hidden;
+}
+.halloween-strip-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 176, 94, 0.4);
+  background: radial-gradient(circle at 50% 35%, rgba(255, 176, 94, 0.5), rgba(255, 90, 30, 0.14));
+  color: #ffd9a8;
+  flex-shrink: 0;
+  animation: pa-lantern 3.6s ease-in-out infinite;
+}
+@keyframes pa-lantern {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 138, 61, 0); }
+  45% { box-shadow: 0 0 22px 2px rgba(255, 150, 70, 0.45); }
+}
+.halloween-strip-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.halloween-strip-copy strong { font-size: 13.5px; letter-spacing: 0.01em; }
+.halloween-strip-copy span { font-size: 11.5px; color: var(--text-dim); }
+.halloween-strip-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.halloween-strip-count {
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 138, 61, 0.4);
+  background: rgba(255, 138, 61, 0.12);
+  color: #ffc79a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .halloween-strip { flex-wrap: wrap; }
+  .halloween-strip-actions { width: 100%; justify-content: space-between; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-scene, .pa-aura, .pa-spark, .pa-sweep, .halloween-strip-icon { animation: none !important; }
+}

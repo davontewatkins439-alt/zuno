@@ -15,6 +15,7 @@ export function PlateArt({ id, className }: { id: string | null | undefined; cla
   if (!spec) return null;
   const gid = `np-g-${uid}`;
   const sid = `np-s-${uid}`;
+  const cid = `np-c-${uid}`;
 
   return (
     <svg
@@ -34,12 +35,52 @@ export function PlateArt({ id, className }: { id: string | null | undefined; cla
           <stop offset="0%" stopColor={spec.glow} />
           <stop offset="100%" stopColor={spec.a} stopOpacity="0" />
         </radialGradient>
+        <linearGradient id={cid} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="45%" stopColor="#ffffff" stopOpacity="0.42" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
       </defs>
       <rect width="320" height="60" fill={spec.a} opacity="0.18" />
-      <Scene scene={spec.scene} gid={gid} sid={sid} a={spec.a} b={spec.b} />
+      <g className={`pa-scene scene-${spec.scene}`}>
+        <Scene scene={spec.scene} gid={gid} sid={sid} a={spec.a} b={spec.b} />
+      </g>
+      {/* Ambient motion layer. Every plate breathes, twinkles and catches a
+          travelling highlight, so a nameplate is never a still picture. */}
+      <g className="pa-ambient">
+        <circle className="pa-aura" cx="206" cy="30" r="42" fill={`url(#${sid})`} />
+        {SPARKS.map(([x, y, delay], index) => (
+          <circle
+            key={index}
+            className="pa-spark"
+            cx={x}
+            cy={y}
+            r={index % 3 === 0 ? 1.4 : 1}
+            fill={spec.b}
+            style={{ animationDelay: `${delay}s` }}
+          />
+        ))}
+      </g>
+      <rect className="pa-sweep" x="-90" y="-14" width="70" height="88" fill={`url(#${cid})`} />
     </svg>
   );
 }
+
+/** Deterministic spark positions, so the twinkle never changes between renders. */
+const SPARKS: [number, number, number][] = [
+  [36, 12, 0],
+  [62, 46, 1.4],
+  [88, 22, 2.8],
+  [118, 40, 0.6],
+  [142, 14, 3.4],
+  [168, 48, 2.1],
+  [196, 20, 4.2],
+  [224, 42, 1.1],
+  [252, 12, 3.8],
+  [278, 34, 2.5],
+  [302, 48, 0.3],
+  [16, 38, 4.8],
+];
 
 /**
  * The owner signature: the ZUNO crown and the ZUNO wordmark drawn as one
@@ -498,6 +539,148 @@ function Scene({ scene, gid, sid, a, b }: { scene: string; gid: string; sid: str
             <rect x="288" y="32" width="2" height="2" rx="1" />
           </g>
           <OwnerMark b={b} />
+        </g>
+      );
+    /* --------------------------- halloween drop -------------------------- */
+    case "pumpkin":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#08060c" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.26" />
+          <ellipse cx="250" cy="56" rx="68" ry="11" fill={a} opacity="0.36" />
+          <g transform="translate(248 30)">
+            <path d="M-4 -15 C -3 -23 6 -25 8 -19 C 6 -17 4 -17 2 -15 Z" fill="#33421f" />
+            <path d="M4 -21 C 14 -25 20 -19 16 -13" stroke="#4a6b2a" strokeWidth="2" fill="none" />
+            <ellipse cx="0" cy="4" rx="27" ry="20" fill="#1a1108" stroke={b} strokeOpacity="0.55" strokeWidth="1.1" />
+            <ellipse cx="-10" cy="3" rx="12" ry="18" fill="#241708" opacity="0.95" />
+            <ellipse cx="10" cy="3" rx="12" ry="18" fill="#241708" opacity="0.95" />
+            <path d="M-14 -4 L-6 -11 L-2 -3 Z" fill={b} opacity="0.95" />
+            <path d="M14 -4 L6 -11 L2 -3 Z" fill={b} opacity="0.95" />
+            <path d="M-12 6 L-6 2 L0 8 L6 2 L12 6 L6 14 L-6 14 Z" fill={b} opacity="0.88" />
+            <circle cx="0" cy="6" r="17" fill={`url(#${sid})`} opacity="0.45" />
+          </g>
+          <g fill={b} opacity="0.8">
+            {[
+              [186, 16],
+              [206, 40],
+              [308, 22],
+              [292, 46],
+            ].map(([x, y], i) => (
+              <rect key={i} x={x} y={y} width="2" height="3" rx="1" />
+            ))}
+          </g>
+        </g>
+      );
+    case "bats":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#06050c" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.3" />
+          <path d="M238 6 a19 19 0 1 0 13 32 a15 15 0 1 1 -13 -32 Z" fill="#f6ecd6" opacity="0.9" />
+          <g fill="#05040a" stroke={b} strokeWidth="0.6" opacity="0.95">
+            {[
+              [168, 14, 1.1],
+              [204, 30, 0.8],
+              [146, 36, 0.7],
+              [214, 12, 0.6],
+              [128, 18, 0.5],
+            ].map(([x, y, s], i) => (
+              <path
+                key={i}
+                d="M0 0 c -4 -6 -11 -7 -14 -1 c 4 0 6 3 7 6 c 3 -2 4 -2 7 0 c 3 -2 4 -2 7 0 c 1 -3 3 -6 7 -6 c -3 -6 -10 -5 -14 1 Z"
+                transform={`translate(${x} ${y}) scale(${s})`}
+              />
+            ))}
+          </g>
+          <g stroke={b} strokeWidth="0.7" opacity="0.18">
+            {[10, 26, 42].map((y) => (
+              <path key={y} d={`M0 ${y} H320`} />
+            ))}
+          </g>
+        </g>
+      );
+    case "web":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#07060f" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.24" />
+          <g transform="translate(322 -2)" stroke={b} fill="none" strokeWidth="0.9" opacity="0.5">
+            {[0, 1, 2, 3, 4, 5].map((i) => {
+              const angle = 0.22 + (i * Math.PI) / 10;
+              return <path key={`s${i}`} d={`M0 0 L${-Math.cos(angle) * 104} ${Math.sin(angle) * 104}`} />;
+            })}
+            {[26, 48, 70, 92].map((radius, ring) => {
+              const points = [0, 1, 2, 3, 4, 5].map((i) => {
+                const angle = 0.22 + (i * Math.PI) / 10;
+                return `${-Math.cos(angle) * radius} ${Math.sin(angle) * radius}`;
+              });
+              return <path key={`r${ring}`} d={`M${points.join(" L")}`} opacity={0.75 - ring * 0.13} />;
+            })}
+          </g>
+          <g transform="translate(252 34)" opacity="0.9">
+            <path d="M0 -8 V14" stroke={b} strokeWidth="0.8" opacity="0.6" />
+            <ellipse cx="0" cy="6" rx="4.6" ry="5.4" fill="#0a0912" stroke={b} strokeWidth="0.7" />
+            <circle cx="0" cy="1.4" r="2.6" fill="#0a0912" stroke={b} strokeWidth="0.6" />
+            <g stroke={b} strokeWidth="0.7">
+              <path d="M-4 4 L-10 1" />
+              <path d="M4 4 L10 1" />
+              <path d="M-4 8 L-10 11" />
+              <path d="M4 8 L10 11" />
+            </g>
+          </g>
+        </g>
+      );
+    case "ghost":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#070810" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.22" />
+          <g opacity="0.22" fill="#0b0e18">
+            {[
+              [40, 24, 16, 30],
+              [70, 30, 12, 24],
+              [284, 22, 14, 32],
+            ].map(([x, y, w, h], i) => (
+              <rect key={i} x={x} y={y} width={w} height={h} rx={w / 2} />
+            ))}
+          </g>
+          <g transform="translate(250 26)" opacity="0.94">
+            <path d="M-19 20 V-3 a19 19 0 0 1 38 0 V20 l-6.3 -5 -6.3 5 -6.4 -5 -6.3 5 -6.4 -5 Z" fill="#eef3ff" />
+            <ellipse cx="-6.4" cy="-4" rx="3.2" ry="4.4" fill="#0a0c14" />
+            <ellipse cx="6.4" cy="-4" rx="3.2" ry="4.4" fill="#0a0c14" />
+            <ellipse cx="0" cy="5" rx="3.2" ry="2.6" fill="#0a0c14" opacity="0.75" />
+          </g>
+          <rect y="34" width="320" height="26" fill={`url(#${sid})`} opacity="0.8" />
+        </g>
+      );
+    case "candy":
+      return (
+        <g>
+          <rect width="320" height="60" fill="#0a0710" />
+          <rect width="320" height="60" fill={`url(#${gid})`} opacity="0.3" />
+          <g transform="rotate(-10 250 30)">
+            <path d="M236 6 L264 6 L250 48 Z" fill="#ffcf5c" />
+            <path d="M236 6 L264 6 L258.7 24 L241.3 24 Z" fill="#ff8a3d" />
+            <path d="M241.3 24 L258.7 24 L250 48 Z" fill="#fff3dd" />
+          </g>
+          <g transform="translate(196 22) rotate(14)">
+            <rect x="-8" y="-5" width="16" height="10" rx="5" fill={b} opacity="0.85" />
+            <path d="M-8 0 L-16 -5 L-16 5 Z" fill={b} opacity="0.55" />
+            <path d="M8 0 L16 -5 L16 5 Z" fill={b} opacity="0.55" />
+          </g>
+          <g transform="translate(296 40) rotate(-18)">
+            <rect x="-7" y="-4" width="14" height="8" rx="4" fill="#ff5fa8" opacity="0.8" />
+          </g>
+          <g fill="#ffffff" opacity="0.5">
+            {[
+              [176, 44],
+              [212, 46],
+              [282, 14],
+              [306, 22],
+            ].map(([x, y], i) => (
+              <rect key={i} x={x} y={y} width="2" height="2" rx="1" />
+            ))}
+          </g>
         </g>
       );
     default:

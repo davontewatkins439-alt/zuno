@@ -160,19 +160,22 @@ nameplates.get("/nameplates", async (c) => {
           rarity: piece.rarity,
           unlock: piece.unlock,
           owned: ownedIds.has(piece.id),
-          equippable: ownedIds.has(piece.id) || (canUse(piece, me, plusActive) && !retired(piece, at)),
+          // The owner keeps seasonal stock after a drop closes; members only keep
+          // what they already claimed.
+          equippable:
+            ownedIds.has(piece.id) ||
+            (canUse(piece, me, plusActive) && (!retired(piece, at) || me.is_owner === 1)),
           equipped: mine?.nameplate === piece.id,
           wornBy: equippedCounts.get(piece.id) ?? 0,
         })),
       };
     }),
     nameplates: rows.results.map((plate) => {
-      const owned = ownedIds.has(plate.id);
-      const allowed = canUse(plate, me, plusActive) && !retired(plate, at);
+      const owned = ownedIds.has(plate.id);        const allowed = canUse(plate, me, plusActive) && !retired(plate, at);
       return {
         ...shape(plate, at),
         unlocked: allowed || owned,
-        equippable: owned || canUse(plate, me, plusActive),
+        equippable: owned || (canUse(plate, me, plusActive) && (!retired(plate, at) || me.is_owner === 1)),
         equipped: mine?.nameplate === plate.id,
         equippedBy: equippedCounts.get(plate.id) ?? 0,
         favorite: favoriteIds.has(plate.id),

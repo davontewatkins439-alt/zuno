@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   Crown,
+  Ghost,
   Gift,
   Heart,
   Layers,
@@ -70,7 +71,6 @@ function BundleArt({ bundle }: { bundle: NameplateBundle }) {
         {shown.map((piece, index) => (
           <div key={piece.id} className={cls("bundle-pill", plateClass(piece.id))} style={{ zIndex: shown.length - index }}>
             <PlateArt id={piece.id} />
-            <span className="bundle-pill-label">{piece.name}</span>
           </div>
         ))}
       </div>
@@ -249,6 +249,7 @@ export function NameplatesView() {
   const favorites = plates.filter((plate) => plate.favorite).length;
   const verified = app.me.user.isOwner || app.me.user.badges.some((badge) => badge.slug === "verified");
   const ownerBundleCount = bundles.filter((bundle) => bundle.unlock === "owner").length;
+  const halloweenBundle = bundles.find((bundle) => bundle.id === "halloween-bundle") ?? null;
   const openBundle = openBundleId ? bundles.find((bundle) => bundle.id === openBundleId) ?? null : null;
 
   const renderBundleAction = (bundle: NameplateBundle) => {
@@ -392,6 +393,36 @@ export function NameplatesView() {
 
       {mode === "bundles" ? (
         <>
+          {halloweenBundle ? (
+            <aside className="halloween-strip">
+              <span className="halloween-strip-icon">
+                <Ghost size={20} />
+              </span>
+              <div className="halloween-strip-copy">
+                <strong>Halloween drop is live</strong>
+                <span>
+                  {halloweenBundle.total} carved plates plus a free pumpkin plate for every account
+                  {halloweenBundle.endsAt
+                    ? ` · ends in ${Math.max(0, Math.ceil((halloweenBundle.endsAt - Date.now()) / 86_400_000))} days`
+                    : ""}
+                </span>
+              </div>
+              <div className="halloween-strip-actions">
+                <span className="halloween-strip-count">Limited</span>
+                <button
+                  type="button"
+                  className="ghost-btn small"
+                  onClick={() => {
+                    setBundleQuery("Halloween");
+                    setBundleTier("all");
+                  }}
+                >
+                  See the drop
+                </button>
+              </div>
+            </aside>
+          ) : null}
+
           <div className="plates-filters bundle-filters" role="tablist" aria-label="Bundle access">
             {[
               { id: "all", label: `All bundles` },
