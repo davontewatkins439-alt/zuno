@@ -331,9 +331,15 @@ export async function notify(
     messageId?: string;
   },
 ): Promise<void> {
+  // Do Not Disturb means exactly that: nothing is written for an account in
+  // that status, so no bell entry, toast, desktop alert or unread badge can be
+  // produced from it. The check lives in the insert itself so every caller is
+  // covered without having to remember it.
   await db
     .prepare(
-      "INSERT INTO notifications (id, user_id, kind, title, body, actor_id, server_id, channel_id, message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      `INSERT INTO notifications (id, user_id, kind, title, body, actor_id, server_id, channel_id, message_id, created_at)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+       WHERE COALESCE((SELECT status FROM users WHERE id = ?), 'online') <> 'dnd'`,
     )
     .bind(
       crypto.randomUUID(),
@@ -346,6 +352,7 @@ export async function notify(
       target.channelId ?? null,
       target.messageId ?? null,
       now(),
+      target.userId,
     )
     .run();
 }

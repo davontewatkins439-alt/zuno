@@ -728,6 +728,9 @@ export function AppProvider({ initialMe, onSessionLost, children }: Props) {
     (event: LiveEvent) => {
       const payload = event.payload || {};
       const activeChannel = channelIdRef.current;
+      // Do Not Disturb silences every alert this client would raise. The server
+      // also stops writing notifications, so this only covers live pushes.
+      const quiet = meRef.current.user.status === "dnd";
       switch (event.kind) {
         case "message.create": {
           const message = payload.message as Message | undefined;
@@ -788,7 +791,7 @@ export function AppProvider({ initialMe, onSessionLost, children }: Props) {
               .then((data) => {
                 setNotifications(data.notifications);
                 const fresh = data.notifications.find((n) => !n.read && n.channelId === payload.channelId);
-                if (fresh) {
+                if (fresh && !quiet) {
                   toast(`${fresh.title}: ${fresh.body ?? ""}`.slice(0, 140), "info");
                   notifyDesktop(fresh.title, fresh.body ?? "New message");
                 }
@@ -797,7 +800,7 @@ export function AppProvider({ initialMe, onSessionLost, children }: Props) {
           }
           break;
         case "friend.request":
-          toast("You have a new friend request", "info");
+          if (!quiet) toast("You have a new friend request", "info");
           scheduleMeRefresh(300);
           if (routeRef.current.name === "friends") void refreshFriends();
           break;
@@ -816,8 +819,12 @@ export function AppProvider({ initialMe, onSessionLost, children }: Props) {
           }
           applyCall(incoming);
           const callerName = incoming.caller?.displayName || incoming.caller?.username || "A friend";
-          toast(`${callerName} is calling`, "info");
-          notifyDesktop(`${callerName} is calling`, incoming.kind === "video" ? "Incoming video call" : "Incoming voice call");
+          // The call itself still surfaces as the incoming card so a ringing
+          // call is never lost, but a DND account gets no toast or desktop pop.
+          if (!quiet) {
+            toast(`${callerName} is calling`, "info");
+            notifyDesktop(`${callerName} is calling`, incoming.kind === "video" ? "Incoming video call" : "Incoming voice call");
+          }
           break;
         }
         case "call.active": {
