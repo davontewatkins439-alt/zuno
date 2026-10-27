@@ -18,7 +18,7 @@ import { api, ApiError } from "../lib/api";
 import type { Nameplate } from "../lib/types";
 import { cls } from "../lib/utils";
 import { plateClass } from "../lib/nameplates";
-import { Avatar } from "./ui";
+import { Avatar, Verified } from "./ui";
 import { PlateArt } from "./PlateArt";
 
 interface Payload {
@@ -151,6 +151,7 @@ export function NameplatesView() {
 
   const equipped = plates.find((plate) => plate.equipped) ?? null;
   const favorites = plates.filter((plate) => plate.favorite).length;
+  const verified = app.me.user.isOwner || app.me.user.badges.some((badge) => badge.slug === "verified");
 
   return (
     <section className="plates-view">
@@ -353,12 +354,23 @@ export function NameplatesView() {
                         accentColor: app.me.user.accentColor,
                         plusDecoration: app.me.user.plusDecoration,
                       }}
-                      size={26}
+                      size={32}
+                      showStatus
                     />
-                    <span className="np-pill-name">{plate.unlock === "owner" ? "zuno" : app.me.user.displayName}</span>
+                    <span className="np-id-copy">
+                      <span className="np-id-name">
+                        <span className="plate-label">
+                          {plate.unlock === "owner" ? "zuno" : app.me.user.displayName}
+                        </span>
+                        {(plate.unlock === "owner" || verified) && <Verified />}
+                      </span>
+                      <span className="np-id-status">
+                        {plate.unlock === "owner" ? "ZUNO OWNER" : app.me.user.customStatus || `@${app.me.user.username}`}
+                      </span>
+                    </span>
                     {plate.unlock === "owner" ? (
                       <span className="np-pill-crown" aria-hidden="true">
-                        <Crown size={12} />
+                        <Crown size={15} />
                       </span>
                     ) : null}
                   </div>

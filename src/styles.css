@@ -3967,30 +3967,50 @@ kbd { font-family: var(--mono); font-size: 10px; background: #060d19; border: 1p
 .np-pill {
   position: relative;
   z-index: 2;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   width: 100%;
-  padding: 5px 16px 5px 5px;
-  min-height: 44px;
-  border-radius: 999px;
+  padding: 8px 14px 8px 8px;
+  min-height: 62px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   overflow: hidden;
   box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.85);
 }
 .np-pill > *:not(.plate-art) { position: relative; z-index: 1; }
-.np-pill .avatar, .np-pill > span:first-of-type { flex-shrink: 0; }
-.np-pill-name {
-  flex: 1;
+.np-pill .avatar { flex-shrink: 0; }
+
+/* The preview is a miniature of the real identity block: avatar, name with its
+   check, and the custom status underneath, all sitting on the plate. */
+.np-id-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.np-id-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   min-width: 0;
-  font-size: 13.5px;
-  font-weight: 750;
+  font-size: 15px;
+  font-weight: 780;
   color: #f4f9ff;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+.np-id-name .plate-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.np-id-status {
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: rgba(212, 226, 246, 0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
 }
+.np-id-status:empty { display: none; }
 
 .np-body { display: flex; flex-direction: column; gap: 7px; padding: 13px 15px 4px; }
 .np-body h3 { font-size: 14px; letter-spacing: -0.01em; }
