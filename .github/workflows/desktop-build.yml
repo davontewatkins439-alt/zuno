@@ -149,7 +149,7 @@ jobs:
           Download the **.exe** below and run it to install ZUNO.
 
           - Windows 10 or 11, 64-bit
-          - Fresh install: opens on the ZUNO sign-in screen, then loads whatever account signs in on that PC from https://zunoo.freebuff.page
+          - Fresh install: opens on the ZUNO sign-in screen and waits for whoever is using that PC to sign in
           - Unsigned build: if SmartScreen appears, choose **More info → Run anyway**
 
           Building for macOS instead? See the ZUNO ${VERSION} for macOS release.
@@ -185,7 +185,7 @@ jobs:
 
           This download is a clean install — nothing is copied over from another computer or from the Windows app. On first launch ZUNO opens on its normal sign-in screen:
 
-          - **Already have an account?** Sign in with your own email and password. Your own servers, DMs, badges and nameplates load from the live service.
+          - **Already have an account?** Sign in with your own email and password.
           - **New here?** Choose sign-up and create an account right in the app.
 
           Each install signs in as whoever is using that Mac: nothing is pre-filled, and installing ZUNO never signs anyone into someone else's account.
