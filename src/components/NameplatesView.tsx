@@ -354,7 +354,7 @@ export function NameplatesView() {
                         accentColor: app.me.user.accentColor,
                         plusDecoration: app.me.user.plusDecoration,
                       }}
-                      size={32}
+                      size={28}
                       showStatus
                     />
                     <span className="np-id-copy">

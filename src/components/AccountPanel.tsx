@@ -33,7 +33,7 @@ export function AccountPanel() {
     <div className={cls("account-panel", plateClass(user.nameplate))}>
       <PlateArt id={user.nameplate} />
       <button type="button" className="account-identity" onClick={() => void openProfile(user.id)}>
-        <Avatar user={user} size={36} showStatus decoration={user.plusDecoration} />
+        <Avatar user={user} size={32} showStatus decoration={user.plusDecoration} />
         <span className="account-meta">
           <span className="account-name">
             <span className="plate-label">{user.displayName}</span>

@@ -20,7 +20,7 @@ export function PlateArt({ id, className }: { id: string | null | undefined; cla
     <svg
       className={className ? `plate-art ${className}` : "plate-art"}
       viewBox="0 0 320 60"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="none"
       aria-hidden="true"
       focusable="false"
     >
